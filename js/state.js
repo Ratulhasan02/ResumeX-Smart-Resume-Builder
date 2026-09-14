@@ -170,6 +170,12 @@ export function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      if (JSON.stringify(parsed) === JSON.stringify(sampleData)) {
+        localStorage.removeItem(STORAGE_KEY);
+        resumeData = JSON.parse(JSON.stringify(defaultState));
+        notifySubscribers();
+        return resumeData;
+      }
       // Merge with defaultState to ensure schema consistency
       resumeData = {
         ...defaultState,
@@ -199,7 +205,7 @@ export function loadState() {
  */
 export function loadSampleState() {
   resumeData = JSON.parse(JSON.stringify(sampleData));
-  saveState();
+  notifySubscribers();
 }
 
 /**
