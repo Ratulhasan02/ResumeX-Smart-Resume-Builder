@@ -208,8 +208,8 @@ ResumeX-Smart-Resume-Builder/
 │   └── template4.jpg
 │
 └── tests/
-
-## 📊 Data Model
+```
+## 📊Data Model
 
 The application uses a central `resumeData` object to manage resume information and application state.
 
