@@ -1,85 +1,220 @@
 # ResumeBuilder Pro 🚀
 
-A modern, interactive, ATS-friendly Resume Builder web application built with **HTML5, Tailwind CSS, Vanilla JavaScript (ES6 Modules), LocalStorage, SortableJS, and native browser print**.
+A modern, interactive resume builder designed to help users create professional, ATS-aware resumes, analyze job-description keywords, customize resume designs, and print or save their resumes as PDF directly from the browser.
+
+## 🔗 Live Demo
+
+**Live Website:** https://ratulhasan02.github.io/ResumeX-Smart-Resume-Builder/
+
+**GitHub Repository:** https://github.com/Ratulhasan02/ResumeX-Smart-Resume-Builder
 
 ---
 
-## ✨ Features & Capabilities
+## 🎯 Problem
+
+Creating a professional and ATS-friendly resume can be difficult, especially when users need to manage formatting, templates, job-specific keywords, and resume length separately.
+
+ResumeBuilder Pro brings these features together in one simple, browser-based application.
+
+---
+
+## 💡 Solution
+
+ResumeBuilder Pro allows users to:
+
+- Build and edit resumes with a live preview
+- Check ATS compatibility
+- Match resume keywords with a job description
+- Detect potentially problematic two-column layouts
+- Choose from multiple professional templates
+- Reorder resume sections
+- Export and import resume data as JSON
+- Print or save resumes as PDF
+- Monitor resume completeness
+- Detect one-page visual overflow
+
+The application is completely client-side and does not require a backend or database.
+
+---
+
+## ✨ Key Features
 
 ### 🛡️ 1. ATS Compatibility Checker & Job Matcher
 
-- **ATS Compatibility Score (0–100)**: Evaluates resume structure, layout, contact information, essential sections, keywords, and overall ATS readiness.
-- **2-Column Layout Detection**: Automatically detects two-column templates and displays an ATS warning because some ATS systems may read content in the     wrong order. Recommends switching to a single-column template.
-- **ATS-Friendly Formatting Check**: Checks section headings, content structure, readability, excessive decoration, emojis, and other potential ATS compatibility issues.
-- **Job Description Keyword Matcher**: Paste any job description into the ATS tool to scan for required skills, technologies, and relevant keywords.
-- **Keyword Match Percentage**: Shows the percentage of matched keywords between the resume and the target job description.
-- **Matched vs Missing Keywords**: Shows matched keywords and missing keywords, with a “+ Add to Skills” option for missing skills.
-- **Dynamic ATS Results**: Recalculates the score and warnings whenever the resume content, template, or job description changes.
+- **ATS Compatibility Score (0–100)** based on resume structure, contact information, essential sections, formatting, and other ATS-related factors.
+- **2-Column Layout Detection** with a warning when a two-column template may cause reading-order issues in some ATS systems.
+- **ATS-Friendly Formatting Check** for section headings, structure, readability, excessive decoration, emojis, and other potential issues.
+- **Job Description Keyword Matcher** to analyze a target job description.
+- **Keyword Match Percentage** showing how closely the resume matches the provided job description.
+- **Matched vs Missing Keywords** to help identify important missing skills.
+- **Dynamic ATS Results** that update when resume content, template, or job description changes.
 
-### 📄 2. Dual PDF Generation & 1-Page Overflow Protection
-- **Print / Save as PDF**: Native browser print output with selectable text, links, and print-aware A4 pagination.
-- **Native Browser Print Fallback**: Dedicated **"Print"** button with specialized `@media print` rules, producing 100% vector, crystal-clear PDFs directly from your browser's print engine.
-- **1-Page Visual Overflow Warning**: Real-time height detector alerts you when resume content spills past 1 standard A4 page (297mm), helping you maintain concise 1-page resumes that recruiters prefer.
+---
 
-### 🎨 3. 4 Distinct Professional Templates & Dynamic Accent Colors
-- **Modern Clean**: Single-column layout with clean dividers, refined typography, and balanced spacing.
-- **Executive Split**: Asymmetric two-column layout with a stylish contact & skills sidebar and spacious main content.
-- **Tech Specialist**: Developer-focused theme with tech pill badges, GitHub repository links, and monospace highlights.
-- **Classic Elegance**: Traditional serif header typography and formal structure suited for law, medicine, academia, and executive positions.
-- **Dynamic Accent Color Swatches**: 6 curated colors (Indigo, Sky Blue, Emerald, Rose, Amber, Slate) with real-time recoloring across all templates.
+### 📄 2. Print / Save as PDF & 1-Page Overflow Protection
 
-### 🔄 4. Drag & Drop AND Keyboard Accessible Reordering
-- **Mouse / Touch Drag & Drop**: Powered by **SortableJS** with smooth visual drag indicators.
-- **Keyboard-Accessible Up (↑) / Down (↓) Buttons**: Full WCAG-friendly buttons on every section header with explicit `aria-label` attributes.
-- Automatically synchronizes with `resumeData.meta.sectionOrder` and re-orders the live preview instantly.
+- **Print / Save as PDF** using the browser's native print functionality.
+- Selectable text and links in the printed PDF.
+- Print-specific `@media print` styling.
+- **1-Page Visual Overflow Warning** that detects when resume content extends beyond a standard A4 page height.
+- Helps users keep their resume concise and visually controlled.
+
+---
+
+### 🎨 3. Professional Templates & Accent Colors
+
+ResumeBuilder Pro includes four different resume templates:
+
+- **Modern Clean** — Single-column layout with clean dividers and balanced spacing.
+- **Executive Split** — Asymmetric two-column design with a contact and skills sidebar.
+- **Tech Specialist** — Developer-focused design with technology badges and GitHub links.
+- **Classic Elegance** — Traditional serif typography and formal structure.
+
+### 🎨 Dynamic Accent Colors
+
+Users can select from six accent colors:
+
+- Indigo
+- Sky Blue
+- Emerald
+- Rose
+- Amber
+- Slate
+
+The selected color is applied dynamically across the resume templates.
+
+---
+
+### 🔄 4. Drag & Drop & Keyboard Section Reordering
+
+- Mouse and touch-based drag-and-drop reordering powered by **SortableJS**.
+- Keyboard-accessible **Up / Down** controls.
+- `aria-label` attributes for improved accessibility.
+- Section order is synchronized with the central `resumeData` state.
+- Live preview updates after reordering.
+
+---
 
 ### 💾 5. JSON Backup & Multi-Profile Transfer
-- **Export JSON**: Download your complete resume profile as a `.json` backup file.
-- **Import JSON**: Upload and restore saved JSON files, enabling multiple resume profiles without backend requirements.
 
-### ⚡ 6. High Performance & Input Validation
-- **Debounced Live Preview (200ms)**: Typing updates are debounced to guarantee buttery-smooth 60fps performance even on slower laptops.
-- **Live Summary Character Counter**: Enforces ATS-recommended brevity with a live `0 / 450 characters` counter and dynamic warning colors.
-- **Real-time Email & Phone Validation**: Visual feedback indicators for email formatting and standard phone numbers.
+- **Export JSON** — Download a complete resume profile as a `.json` file.
+- **Import JSON** — Restore previously saved resume data.
+- Allows users to maintain multiple resume profiles without requiring a backend.
 
-### 📱 7. Responsive Mobile Switcher & Empty States
-- **Mobile Tab Switcher**: Seamless `[Editor & Forms] | [Live A4 Preview]` toggle on mobile screens (< 768px).
-- **Inviting Empty State**: Beautiful canvas empty state guiding new users to start typing or click **Sample Data**.
-- **Dark & Light Mode**: Complete theme toggle with persistent `localStorage` support.
+---
+
+### ⚡ 6. Performance & Input Validation
+
+- **Debounced Live Preview** for smoother editing.
+- **Live Summary Character Counter** with a 450-character limit.
+- Real-time email format validation.
+- Phone number validation.
+- Dynamic validation feedback while entering information.
+
+---
+
+### 📱 7. Responsive Design & User Experience
+
+- Responsive editor and resume preview layout.
+- **Mobile Tab Switcher** for switching between the editor and live A4 preview on smaller screens.
+- Helpful empty state for new users.
+- Sample resume data for quick testing.
+- Dark and Light mode.
+- Theme preference stored using `localStorage`.
+
+---
+
+## 📸 Screenshots
+
+### Resume Editor
+
+![Resume Editor](screenshots/editor.jpg)
+
+### ATS Compatibility Checker
+
+![ATS Checker](screenshots/ats-checker.jpg)
+
+### Resume Templates
+
+#### Template 1
+
+![Template 1](screenshots/template1.jpg)
+
+#### Template 2
+
+![Template 2](screenshots/template2.jpg)
+
+#### Template 3
+
+![Template 3](screenshots/template3.jpg)
+
+#### Template 4
+
+![Template 4](screenshots/template4.jpg)
+
+### Mobile Interface
+
+![Mobile Interface](screenshots/mobile.png)
+
+---
+
+## 🛠️ Tech Stack
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- ES6 Modules
+- LocalStorage
+- SortableJS
+- Native Browser Print
+- Lucide Icons
 
 ---
 
 ## 📁 Folder Structure
 
-```
-resume-builder/
+```text
+ResumeX-Smart-Resume-Builder/
 │
-├── index.html              # Responsive split-screen UI, ATS modal, and controls
-├── /css
-│   └── style.css           # A4 dimensions, print media rules, paper shadows & micro-interactions
-├── /js
-│   ├── main.js             # Bootstrap, Lucide icons init, template & accent bindings, mobile switcher
-│   ├── state.js            # Central resumeData state, localStorage sync, sample data, JSON import/export
-│   ├── formHandlers.js     # Form input bindings, debounce, character counter, reusable createRepeatableField
-│   ├── renderPreview.js    # Live preview dispatcher, zoom controller, and overflow monitor
-│   ├── templates.js        # 4 distinct resume design templates & empty state
-│   ├── dragDrop.js         # SortableJS drag-and-drop & keyboard up/down section reordering
-│   ├── pdfExport.js        # Native browser print and 1-page overflow check
-│   ├── completeness.js     # Real-time profile completeness calculator & suggestions
-│   ├── atsChecker.js       # ATS Compatibility Score, multi-column parser checks & Job Matcher
-│   └── theme.js            # Dark/light mode switcher with persistent preference
-├── /assets
-│   └── favicon.svg         # SVG favicon
-└── README.md               # Documentation and deployment guide
-```
-
----
+├── index.html
+├── .gitignore
+├── README.md
+│
+├── assets/
+│   └── favicon.svg
+│
+├── css/
+│   └── style.css
+│
+├── js/
+│   ├── atsChecker.js
+│   ├── completeness.js
+│   ├── dragDrop.js
+│   ├── formHandlers.js
+│   ├── main.js
+│   ├── pdfExport.js
+│   ├── renderPreview.js
+│   ├── state.js
+│   ├── templates.js
+│   └── theme.js
+│
+├── screenshots/
+│   ├── ats-checker.jpg
+│   ├── editor.jpg
+│   ├── mobile.png
+│   ├── template1.jpg
+│   ├── template2.jpg
+│   ├── template3.jpg
+│   └── template4.jpg
+│
+└── tests/
 
 ## 📊 Data Model
 
-Everything in the application reads and writes to a central `resumeData` object:
+The application uses a central `resumeData` object to manage resume information and application state.
 
 ```javascript
+
 const resumeData = {
   personal: {
     name: "",
@@ -89,46 +224,70 @@ const resumeData = {
     location: "",
     summary: ""
   },
+
   education: [
     { school: "", degree: "", year: "", grade: "" }
   ],
+
   experience: [
     { company: "", role: "", duration: "", description: "" }
   ],
-  skills: [ "JavaScript", "React" ],
+
+  skills: [
+    "JavaScript",
+    "React"
+  ],
+
   projects: [
     { title: "", description: "", link: "" }
   ],
+
   achievements: [
     { title: "", description: "" }
   ],
+
   links: {
     linkedin: "",
     github: "",
     portfolio: ""
   },
+
   meta: {
     template: "template1",
     theme: "light",
     accentColor: "#4f46e5",
-    sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"]
+    sectionOrder: [
+      "personal",
+      "experience",
+      "education",
+      "skills",
+      "projects",
+      "achievements",
+      "links"
+    ]
   }
 };
-```
-
----
 
 ## 🚀 How to Run Locally
 
-Because the application uses native ES6 JavaScript modules (`import`/`export`), run it via any local web server:
+Because the application uses native ES6 JavaScript modules, it should be run through a local web server.
 
-### Option 1: Using Python
+### Option 1: Python
+
 ```bash
+
 python -m http.server 4173
 ```
-Then open `http://localhost:4173` in your browser.
 
-### Option 2: Using Node.js
+Then open:
+
+```text
+
+http://localhost:4173
+```
+
+### Option 2: Node.js
+
 ```bash
 npx serve .
 ```
@@ -137,7 +296,51 @@ npx serve .
 
 ## 🌐 Deployment
 
-The application is completely client-side and can be hosted for free on:
-- **Vercel** (`vercel`)
-- **Netlify** (Drag-and-drop folder or Git)
-- **GitHub Pages** (Settings > Pages > Branch: `main`)
+The project is currently deployed using GitHub Pages.
+
+The application is fully client-side and does not require a backend server or database.
+
+---
+
+## 🔮 Future Improvements
+
+Possible future improvements include:
+
+* More resume templates
+* More advanced ATS analysis
+* Improved job-specific recommendations
+* Additional export formats
+* Cloud-based resume storage
+* User authentication
+* AI-powered resume suggestions
+* More detailed accessibility improvements
+
+---
+
+## 🎓 Project Purpose
+
+This project was developed as a frontend-focused project to demonstrate practical skills in:
+
+* HTML
+* CSS
+* JavaScript
+* Responsive Web Design
+* UI/UX
+* Client-side data management
+* Browser-based PDF printing
+* Accessibility
+* Git & GitHub
+
+---
+
+## 👨‍💻 Author
+
+**Ratul Hasan**
+
+BSc in Computer Science & Engineering
+
+---
+
+## 📄 License
+
+This project is created for educational and portfolio purposes.
