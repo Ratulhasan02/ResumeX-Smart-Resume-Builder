@@ -214,7 +214,6 @@ ResumeX-Smart-Resume-Builder/
 The application uses a central `resumeData` object to manage resume information and application state.
 
 ```javascript
-
 const resumeData = {
   personal: {
     name: "",
@@ -267,7 +266,7 @@ const resumeData = {
     ]
   }
 };
-
+```
 ## 🚀 How to Run Locally
 
 Because the application uses native ES6 JavaScript modules, it should be run through a local web server.
