@@ -1,0 +1,277 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700;900&family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-mono: 'Fira Code', monospace;
+  --accent-color: #4f46e5;
+  --accent-color-light: #e0e7ff;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}
+
+/* A4 Paper Dimensions and Sheet Styling */
+.resume-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.5rem 1rem;
+  background-color: #f1f5f9;
+  min-height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: background-color 0.3s ease;
+}
+
+.dark .resume-page-container {
+  background-color: #0f172a;
+}
+
+/* Scaling Wrapper: Matches visual scaled size to eliminate horizontal blowout on mobile */
+.preview-wrapper {
+  position: relative;
+  margin: 0 auto;
+  display: block;
+  overflow: visible;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+#resume-preview {
+  width: 210mm;
+  min-height: 297mm;
+  background-color: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  transform-origin: top left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+#resume-preview a,
+#resume-preview p,
+#resume-preview span {
+  overflow-wrap: anywhere;
+}
+
+/* Drag and Drop SortableJS Styles */
+.sortable-ghost {
+  opacity: 0.4;
+  background-color: #e0e7ff !important;
+  border: 2px dashed #4f46e5 !important;
+}
+
+.sortable-drag {
+  opacity: 0.9;
+  cursor: grabbing !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2) !important;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Tag Chip animations */
+.skill-chip {
+  animation: fadeInScale 0.15s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Smooth Accordion/Collapsible transitions */
+.accordion-content {
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+.section-title {
+  padding-bottom: 8px !important;
+  margin-bottom: 16px !important;
+  display: block !important;
+}
+
+.resume-section,
+.experience-item,
+.education-item,
+.project-item,
+.links-section,
+.repeatable-card,
+[data-section],
+header {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* High-fidelity Print Optimization (Native Vector PDF Output) */
+@media print {
+  #resume-preview,
+  #preview-wrapper,
+  .preview-wrapper,
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-font-smoothing: antialiased !important;
+    text-rendering: optimizeLegibility !important;
+  }
+
+  h1, h2, h3, h4, .font-heading,
+  .font-bold, .font-semibold, .font-black {
+    font-synthesis: none !important;
+  }
+
+  #resume-preview h1,
+  #resume-preview h2,
+  #resume-preview .tracking-tight,
+  #resume-preview .tracking-wide,
+  #resume-preview .tracking-wider,
+  #resume-preview .tracking-widest {
+    letter-spacing: normal !important;
+  }
+
+  #resume-preview .text-justify {
+    text-align: left !important;
+  }
+  
+  html, body {
+    width: 210mm !important;
+    height: auto !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation, editor panel, modals, and toolbars */
+  #app-header,
+  #mobile-view-tabs,
+  #editor-panel,
+  #preview-toolbar,
+  #page-overflow-warning,
+  #ats-checker-modal,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout structure so preview can paginate naturally */
+  body,
+  #main-workspace,
+  #preview-panel,
+  .resume-page-container,
+  #preview-wrapper {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #resume-preview {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    background: #ffffff !important;
+    page-break-after: auto;
+  }
+
+  /* Ensure resume text and backgrounds remain sharp and visible */
+  #resume-preview,
+  #resume-preview * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent sections and cards from splitting mid-text across pages */
+  .resume-section,
+  .experience-item,
+  .education-item,
+  .project-item,
+  .links-section,
+  .repeatable-card,
+  [data-section],
+  header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .section-title,
+  #resume-preview h2 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .section-title {
+    padding-bottom: 8px !important;
+    margin-bottom: 16px !important;
+    display: block !important;
+  }
+}
+

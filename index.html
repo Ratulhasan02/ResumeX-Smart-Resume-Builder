@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeBuilder Pro — Free Interactive ATS-Friendly Resume Maker</title>
+  <meta name="description" content="Build, customize, and export professional, ATS-friendly resumes in real time with interactive templates, section reordering, ATS keyword checker, and instant PDF download." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            heading: ['Outfit', 'system-ui', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+            mono: ['Fira Code', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- External Libraries (SortableJS, Lucide Icons) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Application Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header id="app-header" class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 lg:px-6 py-2 transition-colors">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-extrabold tracking-tight font-heading flex items-center gap-1.5 leading-none text-slate-900 dark:text-white">
+            ResumeBuilder <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-semibold uppercase tracking-wider">Pro</span>
+          </h1>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 hidden md:block">Interactive ATS-friendly builder with instant export</p>
+        </div>
+      </div>
+
+      <!-- Completeness Score Meter -->
+      <div class="hidden lg:flex items-center gap-2.5 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700/60 shadow-inner">
+        <div class="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i>
+          <span>Score:</span>
+          <span id="completeness-score" class="font-bold text-indigo-600 dark:text-indigo-400">0%</span>
+        </div>
+        <div class="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div id="completeness-bar" class="h-full bg-indigo-500 w-0 transition-all duration-500 rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Action Buttons & Tools -->
+      <div class="ml-auto flex flex-col items-end">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+        
+        <!-- ATS Checker Button -->
+        <button id="ats-checker-btn" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition border border-indigo-200 dark:border-indigo-800" title="Check ATS Compatibility & Match Job Description">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400"></i>
+          <span class="hidden sm:inline">ATS Check</span>
+        </button>
+
+        <!-- JSON Backup / Restore -->
+        <button id="export-json-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700" title="Export Resume Data as JSON file" aria-label="Export Resume as JSON">
+          <i data-lucide="download-cloud" class="w-3.5 h-3.5"></i>
+          <span class="hidden xl:inline">Export JSON</span>
+        </button>
+
+        <button id="import-json-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700" title="Import Resume Data from JSON file" aria-label="Import Resume from JSON">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+          <span class="hidden xl:inline">Import JSON</span>
+        </button>
+        <input type="file" id="import-json-input" accept=".json" class="hidden" aria-label="Import JSON File" />
+
+        <!-- Load Sample Data -->
+        <button id="load-sample-btn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700" title="Fill with sample senior engineer resume data" aria-label="Load Sample Data">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+          <span class="hidden sm:inline">Sample</span>
+        </button>
+
+        <!-- Clear State -->
+        <button id="clear-data-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition border border-rose-200 dark:border-rose-900/50" title="Clear all fields" aria-label="Clear all resume fields">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+
+        <!-- Print / Save as PDF opens the browser print dialog -->
+        <button id="print-pdf-btn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/20 active:scale-95 transition-all" title="Open the browser print dialog" aria-label="Print resume">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>Print / Save as PDF</span>
+        </button>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button id="theme-toggle-btn" type="button" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition" aria-label="Toggle Dark / Light Theme" title="Toggle Dark/Light Mode">
+          <i id="theme-sun-icon" data-lucide="sun" class="w-4 h-4 hidden"></i>
+          <i id="theme-moon-icon" data-lucide="moon" class="w-4 h-4"></i>
+        </button>
+        </div>
+        <p class="no-print text-[11px] text-slate-500 dark:text-slate-400 mt-1 text-right">
+          A print window will open. Choose <strong>"Save as PDF"</strong> as the destination/printer.
+        </p>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Mobile View Switcher (Visible on mobile screens < md) -->
+  <div id="mobile-view-tabs" class="md:hidden flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1.5 gap-2 sticky top-[49px] z-30 shadow-sm">
+    <button id="mobile-tab-editor" type="button" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white text-center transition">
+      Editor & Forms
+    </button>
+    <button id="mobile-tab-preview" type="button" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 text-center transition">
+      Live A4 Preview
+    </button>
+  </div>
+
+  <!-- ================= MAIN TWO-COLUMN WORKSPACE ================= -->
+  <div id="main-workspace" class="flex-1 flex flex-col md:flex-row h-[calc(100dvh-5.75rem)] md:h-[calc(100vh-3.6rem)] overflow-hidden">
+    
+    <!-- LEFT PANEL: FORM EDITOR -->
+    <aside id="editor-panel" class="w-full md:w-1/2 lg:w-[48%] flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full">
+      
+      <!-- Editor Subheader / Info -->
+      <div class="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+          <span>Resume Sections</span>
+        </div>
+        <span class="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+          <i data-lucide="move" class="w-3 h-3"></i>
+          <span>Drag or use ↑ / ↓ arrows</span>
+        </span>
+      </div>
+
+      <!-- Scrollable Form Container -->
+      <div class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
+        
+        <!-- Reorderable Sections Accordion Container (SortableJS target) -->
+        <div id="sections-accordion-container" class="space-y-3">
+
+          <!-- 1. PERSONAL INFORMATION -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="personal">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Personal Info up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Personal Info down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Personal Information</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="personal-name" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Full Name <span class="text-rose-500">*</span></label>
+                  <input type="text" id="personal-name" placeholder="e.g. Alexander Morgan" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label for="personal-title" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Professional Title <span class="text-rose-500">*</span></label>
+                  <input type="text" id="personal-title" placeholder="e.g. Senior Full Stack Engineer" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label for="personal-email" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Email Address <span class="text-rose-500">*</span></label>
+                  <input type="email" id="personal-email" placeholder="e.g. alex@example.com" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  <div id="email-validation-msg" class="min-h-[14px]"></div>
+                </div>
+                <div>
+                  <label for="personal-phone" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Phone Number <span class="text-rose-500">*</span></label>
+                  <input type="tel" id="personal-phone" placeholder="e.g. +1 (555) 019-2834" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  <div id="phone-validation-msg" class="min-h-[14px]"></div>
+                </div>
+              </div>
+              <div>
+                <label for="personal-location" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Location / City</label>
+                <input type="text" id="personal-location" placeholder="e.g. San Francisco, CA" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label for="personal-summary" class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Professional Summary / Bio</label>
+                  <span id="summary-char-counter" class="text-[11px] text-slate-400 font-mono">0 / 450 characters</span>
+                </div>
+                <textarea id="personal-summary" rows="3" maxlength="450" placeholder="Brief 2-3 sentence overview of your background, superpowers, and achievements..." class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. WORK EXPERIENCE -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="experience">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Work Experience up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Work Experience down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="briefcase" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Work Experience</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-4">
+              <div id="experience-container">
+                <!-- Repeatable cards dynamically injected here -->
+              </div>
+              <button id="add-experience-btn" type="button" class="w-full py-2 px-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 transition-colors" aria-label="Add new work experience position">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Position</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. EDUCATION -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="education">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Education up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Education down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="graduation-cap" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Education</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-4">
+              <div id="education-container">
+                <!-- Repeatable cards dynamically injected here -->
+              </div>
+              <button id="add-education-btn" type="button" class="w-full py-2 px-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 transition-colors" aria-label="Add new education entry">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Education</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. SKILLS -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="skills">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Skills up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Skills down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="zap" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Skills & Competencies</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-3">
+              <div>
+                <label for="skill-input" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Add Skill (Type and press Enter or Comma)</label>
+                <div class="flex gap-2">
+                  <input type="text" id="skill-input" placeholder="e.g. TypeScript, React, Docker, Python..." class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                </div>
+              </div>
+
+              <!-- Skills Badges Chips Container -->
+              <div id="skills-chip-container" class="flex flex-wrap gap-2 pt-1 min-h-[32px]">
+                <!-- Chips injected here -->
+              </div>
+
+              <!-- Suggestions -->
+              <div>
+                <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500 block mb-1.5">Suggested ATS keywords:</span>
+                <div id="skill-suggestions" class="flex flex-wrap gap-1.5">
+                  <!-- Quick add buttons injected here -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. PROJECTS -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="projects">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Projects up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Projects down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="folder-git-2" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Key Projects</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-4">
+              <div id="projects-container">
+                <!-- Repeatable cards dynamically injected here -->
+              </div>
+              <button id="add-projects-btn" type="button" class="w-full py-2 px-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 transition-colors" aria-label="Add new project">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Project</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 6. ACHIEVEMENTS & CERTIFICATIONS -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="achievements">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Achievements up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Achievements down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="award" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Achievements & Certifications</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-4">
+              <div id="achievements-container">
+                <!-- Repeatable cards dynamically injected here -->
+              </div>
+              <button id="add-achievements-btn" type="button" class="w-full py-2 px-3 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 transition-colors" aria-label="Add new achievement or certification">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Achievement / Certificate</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 7. SOCIAL LINKS -->
+          <div class="section-card bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden" data-section="links">
+            <div class="accordion-toggle px-3 sm:px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="drag-handle p-1 text-slate-400 hover:text-indigo-600 rounded cursor-grab" title="Drag to reorder" aria-label="Drag to reorder">
+                  <i data-lucide="grip-vertical" class="w-4 h-4 pointer-events-none"></i>
+                </span>
+                <button type="button" class="move-section-up p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Social Links up" title="Move up">
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <button type="button" class="move-section-down p-1 text-slate-400 hover:text-indigo-600 rounded" aria-label="Move Social Links down" title="Move down">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 pointer-events-none"></i>
+                </button>
+                <i data-lucide="link" class="w-4 h-4 text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">Social Links & Portfolios</h3>
+              </div>
+              <i data-lucide="chevron-down" class="accordion-chevron w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+            </div>
+            
+            <div class="accordion-content p-3 sm:p-4 space-y-3">
+              <div>
+                <label for="link-linkedin" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">LinkedIn Profile</label>
+                <input type="url" id="link-linkedin" placeholder="https://linkedin.com/in/username" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label for="link-github" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">GitHub Profile</label>
+                <input type="url" id="link-github" placeholder="https://github.com/username" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label for="link-portfolio" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Portfolio / Personal Website</label>
+                <input type="url" id="link-portfolio" placeholder="https://mywebsite.com" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANEL: LIVE PREVIEW & CONTROLS -->
+    <main id="preview-panel" class="w-full md:w-1/2 lg:w-[52%] hidden md:flex flex-col bg-slate-200 dark:bg-slate-950 overflow-hidden h-full">
+      
+      <!-- Preview Sticky Toolbar -->
+      <div id="preview-toolbar" class="px-3 sm:px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shadow-sm z-10">
+        
+        <!-- Template Switcher Pills -->
+        <div class="flex items-center gap-1 flex-wrap">
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-0.5 hidden sm:inline">Template:</span>
+          <button type="button" data-template="template1" class="px-2 py-1 text-xs font-semibold rounded-md transition-all shadow-sm">
+            Modern
+          </button>
+          <button type="button" data-template="template2" class="px-2 py-1 text-xs font-semibold rounded-md transition-all">
+            Executive
+          </button>
+          <button type="button" data-template="template3" class="px-2 py-1 text-xs font-semibold rounded-md transition-all">
+            Tech
+          </button>
+          <button type="button" data-template="template4" class="px-2 py-1 text-xs font-semibold rounded-md transition-all">
+            Classic
+          </button>
+        </div>
+
+        <!-- Accent Colors & Zoom Controls -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Accent Color Swatches -->
+          <div class="flex items-center gap-1.5" title="Pick Accent Color">
+            <button type="button" data-color="#4f46e5" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-600 transition-transform" aria-label="Indigo"></button>
+            <button type="button" data-color="#0284c7" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-sky-600 transition-transform" aria-label="Sky Blue"></button>
+            <button type="button" data-color="#059669" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-600 transition-transform" aria-label="Emerald"></button>
+            <button type="button" data-color="#e11d48" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-rose-600 transition-transform" aria-label="Rose"></button>
+            <button type="button" data-color="#d97706" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-600 transition-transform" aria-label="Amber"></button>
+            <button type="button" data-color="#334155" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-700 transition-transform" aria-label="Slate"></button>
+          </div>
+
+          <!-- Divider -->
+          <div class="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
+
+          <!-- Zoom Controls -->
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+            <button id="zoom-out-btn" type="button" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" title="Zoom Out" aria-label="Zoom Out">
+              <i data-lucide="minus" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>
+            </button>
+            <span id="zoom-percentage" class="text-[10px] sm:text-[11px] font-mono font-medium px-1 text-slate-600 dark:text-slate-300 min-w-[32px] sm:min-w-[36px] text-center">85%</span>
+            <button id="zoom-in-btn" type="button" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" title="Zoom In" aria-label="Zoom In">
+              <i data-lucide="plus" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>
+            </button>
+            <button id="zoom-fit-btn" type="button" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" title="Fit to Screen" aria-label="Fit to Screen">
+              <i data-lucide="maximize-2" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 1-Page Height Overflow Notification Banner -->
+      <div id="page-overflow-warning" class="px-4 py-2 hidden z-20">
+        <!-- Injected via pdfExport.js -->
+      </div>
+
+      <!-- A4 Resume Preview Viewport with Responsive Scaler Wrapper -->
+      <div class="resume-page-container flex-1">
+        <div id="preview-wrapper" class="preview-wrapper mx-auto">
+          <div id="resume-preview" class="rounded-sm">
+            <!-- Dynamic resume template HTML renders here -->
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- ================= ATS COMPATIBILITY & KEYWORD CHECKER MODAL ================= -->
+  <div id="ats-checker-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 hidden">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900 dark:text-white font-heading">ATS Compatibility & Keyword Engine</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Evaluate Applicant Tracking System readability and job description fit</p>
+          </div>
+        </div>
+        <button id="close-ats-modal-btn" type="button" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close ATS modal">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto space-y-6">
+        
+        <!-- Top Score Banner -->
+        <div class="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+          <div>
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Resume ATS Score</span>
+            <div id="ats-score-status" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">Evaluating...</div>
+          </div>
+          <div id="ats-modal-score" class="text-3xl font-black text-indigo-600 dark:text-indigo-400 font-heading">
+            85/100
+          </div>
+        </div>
+
+        <!-- Layout & Parsing Checklist -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+            <span>Parser Compatibility & Risks</span>
+          </h3>
+          <div id="ats-issues-list" class="space-y-2 mb-3">
+            <!-- Warnings / Errors injected here -->
+          </div>
+          <div id="ats-passes-list" class="space-y-1.5 pt-1">
+            <!-- Passes injected here -->
+          </div>
+        </div>
+
+        <!-- Job Description Keyword Matcher -->
+        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-1 flex items-center gap-1.5">
+              <i data-lucide="target" class="w-3.5 h-3.5 text-indigo-500"></i>
+              <span>Target Job Description Matcher</span>
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Paste the job description you are targeting to discover which keywords and required skills match your resume vs which ones are missing.
+            </p>
+          </div>
+
+          <textarea id="job-description-input" rows="4" placeholder="Paste the FULL job description here (not just the job title) - e.g. copy the entire posting from LinkedIn/Indeed, including required skills and responsibilities." class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Tip: paste the complete job posting, not just the job title - the more detail, the better the keyword match.
+          </p>
+
+          <button id="match-job-btn" type="button" class="w-full py-2.5 px-4 text-xs font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>Analyze Job Keywords & Match</span>
+          </button>
+
+          <!-- Match Results Container -->
+          <div id="job-match-results">
+            <!-- Results dynamically rendered here -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Main Application Script (ES Module) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
