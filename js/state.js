@@ -21,7 +21,7 @@ const defaultState = {
   experience: [
     { company: "", role: "", duration: "", description: "" }
   ],
-  skills: [ "JavaScript", "React" ],
+  skills: [],
   projects: [
     { title: "", description: "", link: "" }
   ],
