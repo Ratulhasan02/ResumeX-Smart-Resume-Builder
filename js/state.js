@@ -3,7 +3,9 @@
  * Synchronizes in-memory state with localStorage and dispatches changes to listeners.
  */
 
-const STORAGE_KEY = 'resume_builder_data_v1';
+const LEGACY_STORAGE_KEY = 'resume_builder_data_v1';
+const PROFILES_INDEX_KEY = 'resume_builder_profiles_index';
+const PROFILE_DATA_KEY_PREFIX = 'resume_builder_data_';
 
 // Initial default blank state matching user data model
 const defaultState = {
@@ -124,6 +126,7 @@ const sampleData = {
 
 // Application state
 export let resumeData = JSON.parse(JSON.stringify(defaultState));
+let profileRegistry = null;
 
 // Subscribers list
 const subscribers = [];
@@ -135,6 +138,140 @@ export function subscribe(callback) {
   if (typeof callback === 'function') {
     subscribers.push(callback);
   }
+}
+
+function cloneState(state) {
+  return JSON.parse(JSON.stringify(state));
+}
+
+function createProfileId() {
+  return `profile_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeState(parsed) {
+  return {
+    ...cloneState(defaultState),
+    ...parsed,
+    personal: { ...defaultState.personal, ...(parsed.personal || {}) },
+    links: { ...defaultState.links, ...(parsed.links || {}) },
+    meta: { ...defaultState.meta, ...(parsed.meta || {}) },
+    education: Array.isArray(parsed.education) && parsed.education.length > 0 ? parsed.education : cloneState(defaultState.education),
+    experience: Array.isArray(parsed.experience) && parsed.experience.length > 0 ? parsed.experience : cloneState(defaultState.experience),
+    skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+    projects: Array.isArray(parsed.projects) && parsed.projects.length > 0 ? parsed.projects : cloneState(defaultState.projects),
+    achievements: Array.isArray(parsed.achievements) && parsed.achievements.length > 0 ? parsed.achievements : cloneState(defaultState.achievements)
+  };
+}
+
+function persistProfileRegistry() {
+  localStorage.setItem(PROFILES_INDEX_KEY, JSON.stringify(profileRegistry));
+}
+
+function ensureProfileRegistry() {
+  if (profileRegistry) return profileRegistry;
+  const storedRegistry = localStorage.getItem(PROFILES_INDEX_KEY);
+  if (storedRegistry) {
+    try {
+      profileRegistry = JSON.parse(storedRegistry);
+    } catch (err) {
+      console.warn('Failed to parse profile registry:', err);
+    }
+  }
+  if (!profileRegistry || !Array.isArray(profileRegistry.profiles) || profileRegistry.profiles.length === 0) {
+    const profileId = createProfileId();
+    let migratedData = null;
+    const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacyData) {
+      try {
+        migratedData = normalizeState(JSON.parse(legacyData));
+      } catch (err) {
+        console.warn('Failed to migrate legacy resume data:', err);
+      }
+    }
+    const now = new Date().toISOString();
+    profileRegistry = {
+      activeProfileId: profileId,
+      profiles: [{ id: profileId, name: 'My Resume', createdAt: now, updatedAt: now }]
+    };
+    localStorage.setItem(`${PROFILE_DATA_KEY_PREFIX}${profileId}`, JSON.stringify(migratedData || defaultState));
+    persistProfileRegistry();
+  }
+  if (!profileRegistry.profiles.some(profile => profile.id === profileRegistry.activeProfileId)) {
+    profileRegistry.activeProfileId = profileRegistry.profiles[0].id;
+  }
+  persistProfileRegistry();
+  return profileRegistry;
+}
+
+export function getProfiles() {
+  return ensureProfileRegistry().profiles.map(profile => ({ ...profile }));
+}
+
+export function getActiveProfile() {
+  const registry = ensureProfileRegistry();
+  return registry.profiles.find(profile => profile.id === registry.activeProfileId) || registry.profiles[0];
+}
+
+export function createProfile(name, duplicateCurrent = false) {
+  const registry = ensureProfileRegistry();
+  saveState();
+  const profileId = createProfileId();
+  const profileName = String(name || '').trim() || 'Untitled Resume';
+  const newData = duplicateCurrent ? cloneState(resumeData) : cloneState(defaultState);
+  const now = new Date().toISOString();
+  registry.profiles.push({ id: profileId, name: profileName, createdAt: now, updatedAt: now });
+  registry.activeProfileId = profileId;
+  localStorage.setItem(`${PROFILE_DATA_KEY_PREFIX}${profileId}`, JSON.stringify(newData));
+  persistProfileRegistry();
+  resumeData = normalizeState(newData);
+  notifySubscribers();
+  return getActiveProfile();
+}
+
+export function switchProfile(profileId) {
+  const registry = ensureProfileRegistry();
+  if (!registry.profiles.some(profile => profile.id === profileId) || profileId === registry.activeProfileId) return false;
+  saveState();
+  try {
+    const raw = localStorage.getItem(`${PROFILE_DATA_KEY_PREFIX}${profileId}`);
+    resumeData = raw ? normalizeState(JSON.parse(raw)) : cloneState(defaultState);
+    registry.activeProfileId = profileId;
+    persistProfileRegistry();
+    notifySubscribers();
+    return true;
+  } catch (err) {
+    console.warn('Failed to switch profile:', err);
+    return false;
+  }
+}
+
+export function renameProfile(profileId, newName) {
+  const profile = ensureProfileRegistry().profiles.find(item => item.id === profileId);
+  const trimmedName = String(newName || '').trim();
+  if (!profile || !trimmedName) return false;
+  profile.name = trimmedName;
+  profile.updatedAt = new Date().toISOString();
+  persistProfileRegistry();
+  notifySubscribers();
+  return true;
+}
+
+export function deleteProfile(profileId) {
+  const registry = ensureProfileRegistry();
+  if (registry.profiles.length <= 1) return false;
+  const profileIndex = registry.profiles.findIndex(profile => profile.id === profileId);
+  if (profileIndex === -1) return false;
+  const wasActive = registry.activeProfileId === profileId;
+  registry.profiles.splice(profileIndex, 1);
+  localStorage.removeItem(`${PROFILE_DATA_KEY_PREFIX}${profileId}`);
+  if (wasActive) {
+    registry.activeProfileId = registry.profiles[Math.max(0, profileIndex - 1)].id;
+    const nextData = localStorage.getItem(`${PROFILE_DATA_KEY_PREFIX}${registry.activeProfileId}`);
+    resumeData = nextData ? normalizeState(JSON.parse(nextData)) : cloneState(defaultState);
+  }
+  persistProfileRegistry();
+  notifySubscribers();
+  return true;
 }
 
 /**
@@ -155,7 +292,11 @@ function notifySubscribers() {
  */
 export function saveState() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(resumeData));
+    const registry = ensureProfileRegistry();
+    const activeProfile = registry.profiles.find(profile => profile.id === registry.activeProfileId);
+    localStorage.setItem(`${PROFILE_DATA_KEY_PREFIX}${registry.activeProfileId}`, JSON.stringify(resumeData));
+    if (activeProfile) activeProfile.updatedAt = new Date().toISOString();
+    persistProfileRegistry();
   } catch (err) {
     console.warn("Unable to save state to localStorage:", err);
   }
@@ -167,30 +308,13 @@ export function saveState() {
  */
 export function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const registry = ensureProfileRegistry();
+    const raw = localStorage.getItem(`${PROFILE_DATA_KEY_PREFIX}${registry.activeProfileId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (JSON.stringify(parsed) === JSON.stringify(sampleData)) {
-        localStorage.removeItem(STORAGE_KEY);
-        resumeData = JSON.parse(JSON.stringify(defaultState));
-        notifySubscribers();
-        return resumeData;
-      }
-      // Merge with defaultState to ensure schema consistency
-      resumeData = {
-        ...defaultState,
-        ...parsed,
-        personal: { ...defaultState.personal, ...(parsed.personal || {}) },
-        links: { ...defaultState.links, ...(parsed.links || {}) },
-        meta: { ...defaultState.meta, ...(parsed.meta || {}) },
-        education: Array.isArray(parsed.education) && parsed.education.length > 0 ? parsed.education : defaultState.education,
-        experience: Array.isArray(parsed.experience) && parsed.experience.length > 0 ? parsed.experience : defaultState.experience,
-        skills: Array.isArray(parsed.skills) ? parsed.skills : defaultState.skills,
-        projects: Array.isArray(parsed.projects) ? parsed.projects : defaultState.projects,
-        achievements: Array.isArray(parsed.achievements) ? parsed.achievements : defaultState.achievements
-      };
+      resumeData = normalizeState(parsed);
     } else {
-      resumeData = JSON.parse(JSON.stringify(defaultState));
+      resumeData = cloneState(defaultState);
     }
   } catch (err) {
     console.warn("Failed to load state from localStorage:", err);
@@ -204,7 +328,9 @@ export function loadState() {
  * Populates state with sample data
  */
 export function loadSampleState() {
-  resumeData = JSON.parse(JSON.stringify(sampleData));
+  createProfile('Sample Profile');
+  resumeData = cloneState(sampleData);
+  saveState();
   notifySubscribers();
 }
 
@@ -212,7 +338,7 @@ export function loadSampleState() {
  * Resets state to blank default
  */
 export function resetState() {
-  resumeData = JSON.parse(JSON.stringify(defaultState));
+  resumeData = cloneState(defaultState);
   saveState();
 }
 
@@ -242,18 +368,7 @@ export function importStateFromJson(jsonString) {
       throw new Error("Invalid JSON structure");
     }
 
-    resumeData = {
-      ...defaultState,
-      ...parsed,
-      personal: { ...defaultState.personal, ...(parsed.personal || {}) },
-      links: { ...defaultState.links, ...(parsed.links || {}) },
-      meta: { ...defaultState.meta, ...(parsed.meta || {}) },
-      education: Array.isArray(parsed.education) ? parsed.education : defaultState.education,
-      experience: Array.isArray(parsed.experience) ? parsed.experience : defaultState.experience,
-      skills: Array.isArray(parsed.skills) ? parsed.skills : defaultState.skills,
-      projects: Array.isArray(parsed.projects) ? parsed.projects : defaultState.projects,
-      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : defaultState.achievements
-    };
+    resumeData = normalizeState(parsed);
 
     saveState();
     return true;

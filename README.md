@@ -29,6 +29,7 @@ ResumeBuilder Pro allows users to:
 - Choose from multiple professional templates
 - Reorder resume sections
 - Export and import resume data as JSON
+- Manage multiple independent resume profiles
 - Print or save resumes as PDF
 - Monitor resume completeness
 - Detect one-page visual overflow
@@ -70,6 +71,17 @@ ResumeBuilder Pro includes four different resume templates:
 - **Tech Specialist** — Developer-focused design with technology badges and GitHub links.
 - **Classic Elegance** — Traditional serif typography and formal structure.
 
+### 👤 4. Multiple Resume Profiles
+
+- **Profile Switcher** — Switch between several independent resumes from the header without leaving the editor.
+- **New Profiles** — Start a blank profile or duplicate the current profile as a tailored variant.
+- **Profile Management** — Rename profiles, delete profiles with confirmation, and keep at least one profile available at all times.
+- **Profile-Specific Settings** — Each profile preserves its own resume content, template, accent color, theme, and section order.
+- **Sample Profile** — Loading sample data creates a separate `Sample Profile` instead of overwriting the active resume.
+- **Import JSON** — Choose whether to import a backup as a new profile or overwrite the active profile.
+- Profiles are stored locally in the browser and require no backend, account, or manual JSON file juggling.
+
+---
 ### 🎨 Dynamic Accent Colors
 
 Users can select from six accent colors:
@@ -85,7 +97,7 @@ The selected color is applied dynamically across the resume templates.
 
 ---
 
-### 🔄 4. Drag & Drop & Keyboard Section Reordering
+### 🔄 5. Drag & Drop & Keyboard Section Reordering
 
 - Mouse and touch-based drag-and-drop reordering powered by **SortableJS**.
 - Keyboard-accessible **Up / Down** controls.
@@ -95,15 +107,14 @@ The selected color is applied dynamically across the resume templates.
 
 ---
 
-### 💾 5. JSON Backup & Multi-Profile Transfer
+### 💾 6. JSON Backup
 
 - **Export JSON** — Download a complete resume profile as a `.json` file.
-- **Import JSON** — Restore previously saved resume data.
-- Allows users to maintain multiple resume profiles without requiring a backend.
+- **Import JSON** — Restore previously saved resume data into a new profile or the active profile.
 
 ---
 
-### ⚡ 6. Performance & Input Validation
+### ⚡ 7. Performance & Input Validation
 
 - **Debounced Live Preview** for smoother editing.
 - **Live Summary Character Counter** with a 450-character limit.
@@ -113,7 +124,7 @@ The selected color is applied dynamically across the resume templates.
 
 ---
 
-### 📱 7. Responsive Design & User Experience
+### 📱 8. Responsive Design & User Experience
 
 - Responsive editor and resume preview layout.
 - **Mobile Tab Switcher** for switching between the editor and live A4 preview on smaller screens.
@@ -267,6 +278,24 @@ const resumeData = {
   }
 };
 ```
+
+### Multiple Profile Storage
+
+ResumeBuilder Pro stores a lightweight profile registry separately from the active profile's resume data:
+
+```text
+resume_builder_profiles_index = {
+  activeProfileId: "profile_abc123",
+  profiles: [
+    { id: "profile_abc123", name: "Frontend Resume", createdAt: "...", updatedAt: "..." }
+  ]
+}
+
+resume_builder_data_profile_abc123 = { personal, education, experience, ... }
+```
+
+Only the active profile's resume data is loaded into memory. Existing users are migrated automatically: if the legacy `resume_builder_data_v1` key is found and no profile registry exists, it becomes a first profile named `My Resume` without losing work. The active profile ID and each profile's data persist across page refreshes.
+
 ## 🚀 How to Run Locally
 
 Because the application uses native ES6 JavaScript modules, it should be run through a local web server.

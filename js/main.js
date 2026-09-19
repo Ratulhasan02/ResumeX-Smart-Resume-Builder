@@ -11,6 +11,12 @@ import {
   resetState,
   exportStateToJson,
   importStateFromJson,
+  getProfiles,
+  getActiveProfile,
+  createProfile,
+  switchProfile,
+  renameProfile,
+  deleteProfile,
   subscribe
 } from './state.js';
 
@@ -48,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   subscribe(() => {
     renderPreview();
     updateCompletenessUI();
+    updateProfileSwitcher();
   });
 
   // 9. Bind Template Selectors
@@ -55,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 10. Bind Accent Color Pickers
   initAccentColorPickers();
+
+  // 10. Bind Resume Profile Switcher
+  initProfileSwitcher();
 
   // 11. Bind Action Buttons (Sample Data, Clear, JSON Backup, Mobile Toggle)
   initHeaderActions();
@@ -66,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCompletenessUI();
   updateTemplateButtonActiveState();
   updateColorButtonActiveState();
+  updateProfileSwitcher();
 
   // Render Lucide Icons if loaded
   if (window.lucide) {
@@ -86,6 +97,91 @@ function initTemplatePickers() {
       updateTemplateButtonActiveState();
     });
   });
+}
+
+function initProfileSwitcher() {
+  const button = document.getElementById('profile-switcher-btn');
+  const menu = document.getElementById('profile-menu');
+  if (!button || !menu) return;
+
+  button.addEventListener('click', () => {
+    const isHidden = menu.classList.toggle('hidden');
+    button.setAttribute('aria-expanded', String(!isHidden));
+    if (!isHidden) renderProfileMenu();
+  });
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#profile-switcher')) {
+      menu.classList.add('hidden');
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  menu.addEventListener('click', event => {
+    const action = event.target.closest('[data-profile-action]');
+    if (!action) return;
+    const profileId = action.dataset.profileId;
+    const actionName = action.dataset.profileAction;
+
+    if (actionName === 'switch') {
+      if (switchProfile(profileId)) {
+        populateFormFromState();
+        updateTemplateButtonActiveState();
+        updateColorButtonActiveState();
+      }
+    } else if (actionName === 'new') {
+      const name = prompt('Name your new resume profile:');
+      if (name?.trim()) {
+        const duplicate = confirm('Duplicate the current profile? Choose Cancel to start blank.');
+        createProfile(name, duplicate);
+        populateFormFromState();
+        updateTemplateButtonActiveState();
+        updateColorButtonActiveState();
+      }
+    } else if (actionName === 'rename') {
+      const profile = getProfiles().find(item => item.id === profileId);
+      const name = prompt('Rename profile:', profile?.name || '');
+      if (renameProfile(profileId, name)) renderProfileMenu();
+    } else if (actionName === 'delete') {
+      const profile = getProfiles().find(item => item.id === profileId);
+      if (profile && confirm(`Delete "${profile.name}"? This cannot be undone.`) && deleteProfile(profileId)) {
+        populateFormFromState();
+        updateTemplateButtonActiveState();
+        updateColorButtonActiveState();
+      }
+    }
+
+    if (actionName !== 'rename') {
+      menu.classList.add('hidden');
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  function renderProfileMenu() {
+    const activeId = getActiveProfile().id;
+    menu.innerHTML = getProfiles().map(profile => `
+      <div class="group flex items-center gap-1 rounded-md ${profile.id === activeId ? 'bg-indigo-50 dark:bg-indigo-950/50' : ''}">
+        <button type="button" data-profile-action="switch" data-profile-id="${profile.id}" class="min-w-0 flex-1 text-left px-2.5 py-2 text-xs ${profile.id === activeId ? 'font-bold text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'} hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md truncate">${escapeHtml(profile.name)}</button>
+        <button type="button" data-profile-action="rename" data-profile-id="${profile.id}" class="p-1.5 text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100" title="Rename profile" aria-label="Rename ${escapeHtml(profile.name)}"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+        <button type="button" data-profile-action="delete" data-profile-id="${profile.id}" class="p-1.5 mr-1 text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100" title="Delete profile" aria-label="Delete ${escapeHtml(profile.name)}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+      </div>`).join('') + `
+      <div class="border-t border-slate-200 dark:border-slate-700 mt-1 pt-1">
+        <button type="button" data-profile-action="new" class="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md"><i data-lucide="plus" class="w-3.5 h-3.5"></i> New Profile</button>
+      </div>`;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+  }
+
+  window.renderProfileMenu = renderProfileMenu;
+}
+
+function updateProfileSwitcher() {
+  const nameElement = document.getElementById('active-profile-name');
+  if (nameElement) nameElement.textContent = getActiveProfile().name;
+  if (window.renderProfileMenu && !document.getElementById('profile-menu')?.classList.contains('hidden')) window.renderProfileMenu();
 }
 
 function updateTemplateButtonActiveState() {
@@ -183,6 +279,12 @@ function initHeaderActions() {
       reader.onload = (event) => {
         const content = event.target?.result;
         if (typeof content === 'string') {
+          const importAsNewProfile = confirm('Import as a new profile? Choose Cancel to overwrite the current profile.');
+          if (importAsNewProfile) {
+            const profileName = prompt('Name the imported profile:', 'Imported Resume');
+            if (!profileName?.trim()) return;
+            createProfile(profileName, false);
+          }
           const success = importStateFromJson(content);
           if (success) {
             populateFormFromState();
