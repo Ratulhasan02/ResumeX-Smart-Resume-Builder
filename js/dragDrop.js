@@ -6,11 +6,10 @@
 
 import { resumeData, saveState } from './state.js';
 
-export function initDragAndDrop() {
+export function applySectionOrder() {
   const sectionsContainer = document.getElementById('sections-accordion-container');
   if (!sectionsContainer) return;
 
-  // Reorder sections in DOM to match saved state on init
   const savedOrder = resumeData.meta?.sectionOrder || [];
   if (savedOrder.length > 0) {
     savedOrder.forEach(sectionKey => {
@@ -20,12 +19,20 @@ export function initDragAndDrop() {
       }
     });
   }
+}
+
+export function initDragAndDrop() {
+  const sectionsContainer = document.getElementById('sections-accordion-container');
+  if (!sectionsContainer) return;
+
+  applySectionOrder();
 
   // Helper to sync state from current DOM order
   function syncSectionOrder() {
     const sectionElements = sectionsContainer.querySelectorAll('[data-section]');
     const newOrder = Array.from(sectionElements).map(el => el.dataset.section);
-    resumeData.meta.sectionOrder = newOrder;
+    resumeData.meta.sectionOrder = ['personal', ...newOrder.filter(key => key !== 'personal')];
+    applySectionOrder();
     saveState();
   }
 
@@ -33,6 +40,8 @@ export function initDragAndDrop() {
   if (typeof Sortable !== 'undefined') {
     Sortable.create(sectionsContainer, {
       handle: '.drag-handle',
+      filter: '[data-section="personal"]',
+      preventOnFilter: false,
       animation: 200,
       ghostClass: 'sortable-ghost',
       dragClass: 'sortable-drag',
@@ -48,7 +57,7 @@ export function initDragAndDrop() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const card = btn.closest('.section-card');
-      if (card && card.previousElementSibling) {
+      if (card && card.previousElementSibling && card.previousElementSibling.dataset.section !== 'personal') {
         sectionsContainer.insertBefore(card, card.previousElementSibling);
         syncSectionOrder();
         btn.focus();
@@ -60,7 +69,7 @@ export function initDragAndDrop() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const card = btn.closest('.section-card');
-      if (card && card.nextElementSibling) {
+      if (card && card.dataset.section !== 'personal' && card.nextElementSibling) {
         sectionsContainer.insertBefore(card, card.nextElementSibling.nextElementSibling);
         syncSectionOrder();
         btn.focus();

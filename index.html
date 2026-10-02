@@ -9,38 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- Tailwind CSS Play CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            heading: ['Outfit', 'system-ui', 'sans-serif'],
-            serif: ['Playfair Display', 'Georgia', 'serif'],
-            mono: ['Fira Code', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
-          }
-        }
-      }
-    };
-  </script>
-
   <!-- External Libraries (SortableJS, Lucide Icons) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
 
   <!-- Application Styles -->
+  <link rel="stylesheet" href="css/tailwind.css" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-indigo-500 selection:text-white">
@@ -560,7 +534,7 @@
             </p>
           </div>
 
-          <textarea id="job-description-input" rows="4" placeholder="Paste the FULL job description here (not just the job title) - e.g. copy the entire posting from LinkedIn/Indeed, including required skills and responsibilities." class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+          <textarea id="job-description-input" rows="4" maxlength="5000" placeholder="Paste the FULL job description here (not just the job title) - e.g. copy the entire posting from LinkedIn/Indeed, including required skills and responsibilities." class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             Tip: paste the complete job posting, not just the job title - the more detail, the better the keyword match.
           </p>

@@ -1,3 +1,5 @@
+import { templates } from './templates.js';
+
 /**
  * Central State Management for Resume Builder
  * Synchronizes in-memory state with localStorage and dispatches changes to listeners.
@@ -6,6 +8,9 @@
 const LEGACY_STORAGE_KEY = 'resume_builder_data_v1';
 const PROFILES_INDEX_KEY = 'resume_builder_profiles_index';
 const PROFILE_DATA_KEY_PREFIX = 'resume_builder_data_';
+const KNOWN_SECTIONS = ['personal', 'experience', 'education', 'skills', 'projects', 'achievements', 'links'];
+const MAX_IMPORT_ITEMS = 50;
+const MAX_FIELD_LENGTH = 5000;
 
 // Initial default blank state matching user data model
 const defaultState = {
@@ -37,9 +42,9 @@ const defaultState = {
   },
   meta: {
     template: "template1",
-    theme: "light",
     accentColor: "#4f46e5",
-    sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"]
+    sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"],
+    jobDescription: ""
   }
 };
 
@@ -118,9 +123,9 @@ const sampleData = {
   },
   meta: {
     template: "template1",
-    theme: "light",
     accentColor: "#4f46e5",
-    sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"]
+    sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"],
+    jobDescription: ""
   }
 };
 
@@ -148,18 +153,47 @@ function createProfileId() {
   return `profile_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function boundedString(value) {
+  return typeof value === 'string' ? value.slice(0, MAX_FIELD_LENGTH) : '';
+}
+
+function normalizeItems(value, fields, fallback) {
+  if (!Array.isArray(value) || value.length === 0) return cloneState(fallback);
+  return value.slice(0, MAX_IMPORT_ITEMS).map(item => {
+    const normalized = {};
+    fields.forEach(field => {
+      normalized[field] = boundedString(item && typeof item === 'object' ? item[field] : '');
+    });
+    return normalized;
+  });
+}
+
 function normalizeState(parsed) {
+  const source = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  const meta = source.meta && typeof source.meta === 'object' ? source.meta : {};
+  const sectionOrder = ['personal', ...new Set((Array.isArray(meta.sectionOrder) ? meta.sectionOrder : [])
+    .filter(key => KNOWN_SECTIONS.includes(key) && key !== 'personal'))];
+  KNOWN_SECTIONS.filter(key => key !== 'personal').forEach(key => {
+    if (!sectionOrder.includes(key)) sectionOrder.push(key);
+  });
+
   return {
     ...cloneState(defaultState),
-    ...parsed,
-    personal: { ...defaultState.personal, ...(parsed.personal || {}) },
-    links: { ...defaultState.links, ...(parsed.links || {}) },
-    meta: { ...defaultState.meta, ...(parsed.meta || {}) },
-    education: Array.isArray(parsed.education) && parsed.education.length > 0 ? parsed.education : cloneState(defaultState.education),
-    experience: Array.isArray(parsed.experience) && parsed.experience.length > 0 ? parsed.experience : cloneState(defaultState.experience),
-    skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-    projects: Array.isArray(parsed.projects) && parsed.projects.length > 0 ? parsed.projects : cloneState(defaultState.projects),
-    achievements: Array.isArray(parsed.achievements) && parsed.achievements.length > 0 ? parsed.achievements : cloneState(defaultState.achievements)
+    personal: Object.fromEntries(Object.keys(defaultState.personal).map(field => [field, boundedString(source.personal?.[field])])),
+    links: Object.fromEntries(Object.keys(defaultState.links).map(field => [field, boundedString(source.links?.[field])])),
+    meta: {
+      template: Object.hasOwn(templates, meta.template) ? meta.template : defaultState.meta.template,
+      accentColor: typeof meta.accentColor === 'string' && /^#[0-9a-f]{6}$/i.test(meta.accentColor)
+        ? meta.accentColor
+        : defaultState.meta.accentColor,
+      sectionOrder,
+      jobDescription: boundedString(meta.jobDescription)
+    },
+    education: normalizeItems(source.education, ['school', 'degree', 'year', 'grade'], defaultState.education),
+    experience: normalizeItems(source.experience, ['company', 'role', 'duration', 'description'], defaultState.experience),
+    skills: Array.isArray(source.skills) ? source.skills.slice(0, MAX_IMPORT_ITEMS).map(boundedString).filter(Boolean) : [],
+    projects: normalizeItems(source.projects, ['title', 'description', 'link'], defaultState.projects),
+    achievements: normalizeItems(source.achievements, ['title', 'description'], defaultState.achievements)
   };
 }
 
@@ -328,17 +362,23 @@ export function loadState() {
  * Populates state with sample data
  */
 export function loadSampleState() {
-  createProfile('Sample Profile');
+  const sampleProfile = getProfiles().find(profile => profile.name === 'Sample Profile');
+  if (sampleProfile) {
+    if (getActiveProfile().id !== sampleProfile.id) switchProfile(sampleProfile.id);
+  } else {
+    createProfile('Sample Profile');
+  }
   resumeData = cloneState(sampleData);
   saveState();
-  notifySubscribers();
 }
 
 /**
  * Resets state to blank default
  */
 export function resetState() {
+  const preservedMeta = cloneState(resumeData.meta);
   resumeData = cloneState(defaultState);
+  resumeData.meta = preservedMeta;
   saveState();
 }
 
@@ -361,14 +401,17 @@ export function exportStateToJson() {
 /**
  * Imports resume state from parsed JSON content
  */
+export function parseStateFromJson(jsonString) {
+  const parsed = JSON.parse(jsonString);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Invalid JSON structure');
+  }
+  return normalizeState(parsed);
+}
+
 export function importStateFromJson(jsonString) {
   try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error("Invalid JSON structure");
-    }
-
-    resumeData = normalizeState(parsed);
+    resumeData = parseStateFromJson(jsonString);
 
     saveState();
     return true;

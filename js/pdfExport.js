@@ -7,10 +7,14 @@ import { resumeData } from './state.js';
 
 export function initPdfExport() {
   const printBtn = document.getElementById('print-pdf-btn');
+  const overflowWarning = document.getElementById('page-overflow-warning');
 
   if (printBtn) {
     printBtn.addEventListener('click', handleBrowserPrint);
   }
+  overflowWarning?.addEventListener('click', event => {
+    if (event.target.closest('[data-dismiss-overflow]')) overflowWarning.classList.add('hidden');
+  });
 }
 
 /**
@@ -58,7 +62,7 @@ export function checkPageOverflow() {
           <span>⚠️</span>
           <span><strong>Resume spans ~${extraPages} pages.</strong> Recruiters strongly prefer 1-page resumes. Shorten bullet points to fit 1 page.</span>
         </div>
-        <button type="button" class="text-slate-900 hover:text-black font-bold text-sm px-1.5" onclick="document.getElementById('page-overflow-warning').classList.add('hidden')" aria-label="Dismiss warning">✕</button>
+        <button type="button" data-dismiss-overflow class="text-slate-900 hover:text-black font-bold text-sm px-1.5" aria-label="Dismiss warning">✕</button>
       </div>
     `;
   } else {

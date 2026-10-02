@@ -44,11 +44,11 @@ The application is completely client-side and does not require a backend or data
 
 - **ATS Compatibility Score (0–100)** based on resume structure, contact information, essential sections, formatting, and other ATS-related factors.
 - **2-Column Layout Detection** with a warning when a two-column template may cause reading-order issues in some ATS systems.
-- **ATS-Friendly Formatting Check** for section headings, structure, readability, excessive decoration, emojis, and other potential issues.
+- **ATS-Friendly Formatting Check** for contact details, work history, skills, education, and template layout.
 - **Job Description Keyword Matcher** to analyze a target job description.
 - **Keyword Match Percentage** showing how closely the resume matches the provided job description.
 - **Matched vs Missing Keywords** to help identify important missing skills.
-- **Dynamic ATS Results** that update when resume content, template, or job description changes.
+- **Dynamic ATS Results** that update while the checker is open as resume content, template, or job description changes.
 
 ---
 
@@ -76,8 +76,8 @@ ResumeBuilder Pro includes four different resume templates:
 - **Profile Switcher** — Switch between several independent resumes from the header without leaving the editor.
 - **New Profiles** — Start a blank profile or duplicate the current profile as a tailored variant.
 - **Profile Management** — Rename profiles, delete profiles with confirmation, and keep at least one profile available at all times.
-- **Profile-Specific Settings** — Each profile preserves its own resume content, template, accent color, theme, and section order.
-- **Sample Profile** — Loading sample data creates a separate `Sample Profile` instead of overwriting the active resume.
+- **Profile-Specific Settings** — Each profile preserves its own resume content, template, accent color, section order, and saved job description. Dark/light theme is global.
+- **Sample Profile** — Loading sample data switches to and resets the existing `Sample Profile`, or creates it once if needed.
 - **Import JSON** — Choose whether to import a backup as a new profile or overwrite the active profile.
 - Profiles are stored locally in the browser and require no backend, account, or manual JSON file juggling.
 
@@ -179,6 +179,9 @@ The selected color is applied dynamically across the resume templates.
 - SortableJS
 - Native Browser Print
 - Lucide Icons
+- Tailwind CSS CLI
+
+Run `npm install` once, then `npm run build:css` to compile utility classes into `css/tailwind.css`.
 
 ---
 
@@ -195,7 +198,9 @@ ResumeX-Smart-Resume-Builder/
 │   └── favicon.svg
 │
 ├── css/
-│   └── style.css
+│   ├── style.css
+│   ├── tailwind.input.css
+│   └── tailwind.css
 │
 ├── js/
 │   ├── atsChecker.js
@@ -207,7 +212,11 @@ ResumeX-Smart-Resume-Builder/
 │   ├── renderPreview.js
 │   ├── state.js
 │   ├── templates.js
-│   └── theme.js
+│   ├── theme.js
+│   ├── utils.js
+│   └── validators.js
+├── package.json
+├── tailwind.config.cjs
 │
 ├── screenshots/
 │   ├── ats-checker.jpg
@@ -264,8 +273,8 @@ const resumeData = {
 
   meta: {
     template: "template1",
-    theme: "light",
     accentColor: "#4f46e5",
+    jobDescription: "",
     sectionOrder: [
       "personal",
       "experience",

@@ -3,18 +3,21 @@
  * Evaluates resumes for Applicant Tracking System (ATS) readability and matches keywords from job postings.
  */
 
-import { resumeData, saveState } from './state.js';
+import { resumeData, saveState, subscribe } from './state.js';
+import { escapeHtml } from './utils.js';
+import { templates } from './templates.js';
+import { validateEmail, validatePhone } from './validators.js';
 
-// Templates that use a two-column layout. Two-column resumes can cause
-// reading-order problems for some ATS parsers (left column may be read
-// completely before the right column, or sections may be read out of order).
-// NOTE: Based on templates.js, Template 2 ("Executive Split") is the only
-// two-column layout (aside w-1/3 + main w-2/3). Templates 1, 3, and 4 are
-// single-column. Update this set if new templates are added.
-const TWO_COLUMN_TEMPLATES = new Set(['template2']);
+const KEYWORD_LABELS = {
+  javascript: 'JavaScript', typescript: 'TypeScript', 'next.js': 'Next.js', 'node.js': 'Node.js',
+  'c++': 'C++', 'c#': 'C#', '.net': '.NET', sql: 'SQL', postgresql: 'PostgreSQL', mysql: 'MySQL',
+  mongodb: 'MongoDB', redis: 'Redis', aws: 'AWS', azure: 'Azure', gcp: 'GCP', ci: 'CI/CD',
+  'ci/cd': 'CI/CD', graphql: 'GraphQL', html5: 'HTML5', css3: 'CSS3', 'tailwind css': 'Tailwind CSS', 'rest api': 'REST API',
+  jira: 'Jira', seo: 'SEO', sem: 'SEM', crm: 'CRM', gaap: 'GAAP', ifrs: 'IFRS', ehr: 'EHR',
+  emr: 'EMR', bls: 'BLS', acls: 'ACLS', hipaa: 'HIPAA', rn: 'RN', sap: 'SAP', excel: 'Excel'
+};
 
-// Common technical and professional keywords list for extraction
-const TECH_KEYWORDS_DICTIONARY = [
+const JOB_KEYWORDS_DICTIONARY = [
   'javascript', 'typescript', 'react', 'next.js', 'vue', 'angular', 'node.js', 'express',
   'python', 'django', 'flask', 'fastapi', 'java', 'spring', 'c++', 'c#', '.net', 'golang', 'rust',
   'sql', 'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'dynamodb',
@@ -22,8 +25,20 @@ const TECH_KEYWORDS_DICTIONARY = [
   'graphql', 'rest api', 'microservices', 'distributed systems', 'system design',
   'html5', 'css3', 'tailwind css', 'sass', 'webpack', 'vite',
   'jest', 'cypress', 'playwright', 'tdd', 'agile', 'scrum', 'jira',
-  'machine learning', 'artificial intelligence', 'data science', 'analytics'
-];
+  'machine learning', 'artificial intelligence', 'data science', 'analytics',
+  'seo', 'sem', 'content marketing', 'campaign management', 'email marketing', 'market research',
+  'brand strategy', 'social media', 'google analytics', 'conversion rate optimization', 'crm',
+  'salesforce', 'hubspot', 'lead generation', 'demand generation', 'product marketing', 'marketing automation',
+  'financial analysis', 'financial modeling', 'budgeting', 'forecasting', 'gaap', 'ifrs',
+  'financial reporting', 'accounts payable', 'accounts receivable', 'reconciliation', 'variance analysis',
+  'risk management', 'compliance', 'audit', 'investment analysis', 'valuation', 'excel', 'quickbooks', 'sap',
+  'patient care', 'nursing', 'registered nurse', 'rn', 'bls', 'acls', 'triage', 'medication administration',
+  'electronic health records', 'ehr', 'emr', 'clinical assessment', 'care planning', 'patient education',
+  'infection control', 'hipaa', 'leadership', 'communication', 'project management', 'stakeholder management',
+  'data analysis', 'customer service', 'sales', 'negotiation', 'operations', 'supply chain', 'inventory management',
+  'human resources', 'recruiting', 'training'
+].map(key => ({ key, label: KEYWORD_LABELS[key] || key.replace(/\b\w/g, character => character.toUpperCase()) }));
+const KEYWORD_DISPLAY_LABELS = new Map(JOB_KEYWORDS_DICTIONARY.map(({ key, label }) => [key, label]));
 
 /**
  * Calculates ATS readiness score and generates a list of actionable warnings
@@ -36,7 +51,7 @@ export function analyzeAtsCompatibility() {
   const { personal, education, experience, skills, meta } = resumeData;
 
   // 1. Template Layout Check (Two-column reading-order risk)
-  const isTwoColumnTemplate = TWO_COLUMN_TEMPLATES.has(meta?.template);
+  const isTwoColumnTemplate = templates[meta?.template]?.layout === 'two-column';
 
   if (isTwoColumnTemplate) {
     const layoutPenalty = 10;
@@ -71,8 +86,8 @@ export function analyzeAtsCompatibility() {
   }
 
   // 3. Contact Details
-  const hasEmail = Boolean(personal?.email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personal.email));
-  const hasPhone = Boolean(personal?.phone?.trim());
+  const hasEmail = validateEmail(personal?.email).valid;
+  const hasPhone = validatePhone(personal?.phone).valid;
 
   if (!hasEmail) {
     score -= 15;
@@ -107,13 +122,14 @@ export function analyzeAtsCompatibility() {
       desc: 'ATS algorithms heavily weigh past job titles, company names, and employment history.'
     });
   } else {
-    const hasBullets = validExp.some(e => e.description?.includes('•') || e.description?.includes('-') || (e.description?.length || 0) > 50);
+    const hasBullets = validExp.every(entry => (entry.description || '').split(/\r?\n/)
+      .filter(line => /^\s*(?:[•*-]|\d+[.)])\s+\S/.test(line)).length >= 2);
     if (!hasBullets) {
       score -= 10;
       issues.push({
         type: 'warning',
         title: 'Action-Oriented Experience Bullets',
-        desc: 'Add bullet points starting with strong action verbs (e.g., "Architected", "Reduced", "Engineered") to maximize keyword parsing.'
+        desc: 'Add at least two real bullet lines for every role, starting with strong action verbs (e.g., "Architected", "Reduced", "Engineered").'
       });
     } else {
       passes.push({
@@ -172,16 +188,9 @@ function escapeRegExp(string) {
 function containsKeyword(fullText, keyword) {
   const cleanKeyword = keyword.trim().toLowerCase();
   if (!cleanKeyword) return false;
-  
-  // For keywords containing non-word symbols like c++, c#, .net
-  if (/[+#]/.test(cleanKeyword)) {
-    const escaped = escapeRegExp(cleanKeyword);
-    const regex = new RegExp(`(^|\\s|[,.;:/()[\\]])${escaped}($|\\s|[,.;:/()[\\]])`, 'i');
-    return regex.test(fullText);
-  }
-  
-  const escaped = escapeRegExp(cleanKeyword);
-  const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+
+  const escaped = escapeRegExp(cleanKeyword).replace(/ /g, '\\s+');
+  const regex = new RegExp(`(^|[^a-z0-9])${escaped}(?:s|es)?(?=$|[^a-z0-9])`, 'i');
   return regex.test(fullText);
 }
 
@@ -190,32 +199,26 @@ export function matchJobDescription(jobDescText) {
     return { matchPercent: 0, matchedKeywords: [], missingKeywords: [] };
   }
 
-  const normalizedJobText = jobDescText.toLowerCase();
+  const normalizedJobText = jobDescText.toLowerCase().replace(/\s+/g, ' ').trim();
 
   // Combine all resume text for keyword search
   const resumeTextParts = [
     resumeData.personal?.summary || '',
+    resumeData.personal?.title || '',
     ...(resumeData.skills || []),
     ...(resumeData.experience || []).map(e => `${e.role} ${e.company} ${e.description}`),
-    ...(resumeData.projects || []).map(p => `${p.title} ${p.description}`)
+    ...(resumeData.projects || []).map(p => `${p.title} ${p.description}`),
+    ...(resumeData.education || []).map(item => item.degree || ''),
+    ...(resumeData.achievements || []).map(item => `${item.title} ${item.description}`)
   ];
-  const combinedResumeText = resumeTextParts.join(' ').toLowerCase();
+  const combinedResumeText = resumeTextParts.join(' ').toLowerCase().replace(/\s+/g, ' ').trim();
 
   // Extract detected keywords from job description
   const detectedJobKeywords = new Set();
 
-  TECH_KEYWORDS_DICTIONARY.forEach(kw => {
-    if (containsKeyword(normalizedJobText, kw)) {
-      detectedJobKeywords.add(kw);
-    }
-  });
-
-  // Also extract any capitalized words or phrases in job description that match resume skills
-  (resumeData.skills || []).forEach(s => {
-    if (s.trim().length > 2) {
-      if (containsKeyword(normalizedJobText, s)) {
-        detectedJobKeywords.add(s.toLowerCase());
-      }
+  JOB_KEYWORDS_DICTIONARY.forEach(({ key }) => {
+    if (containsKeyword(normalizedJobText, key)) {
+      detectedJobKeywords.add(key);
     }
   });
 
@@ -228,8 +231,7 @@ export function matchJobDescription(jobDescText) {
   const missingKeywords = [];
 
   allTargetKeywords.forEach(kw => {
-    const isMatchedInResume = (resumeData.skills || []).some(s => s.toLowerCase() === kw) ||
-      containsKeyword(combinedResumeText, kw);
+    const isMatchedInResume = containsKeyword(combinedResumeText, kw);
 
     if (isMatchedInResume) {
       matchedKeywords.push(kw);
@@ -257,11 +259,49 @@ export function initAtsChecker() {
   const closeBtn = document.getElementById('close-ats-modal-btn');
   const matchJobBtn = document.getElementById('match-job-btn');
   const jobTextarea = document.getElementById('job-description-input');
+  let matchUpdateTimeout;
+  let resultUpdateTimeout;
+
+  if (jobTextarea) {
+    jobTextarea.value = resumeData.meta?.jobDescription || '';
+    jobTextarea.addEventListener('input', () => {
+      resumeData.meta.jobDescription = jobTextarea.value.slice(0, 5000);
+      clearTimeout(matchUpdateTimeout);
+      clearTimeout(resultUpdateTimeout);
+      if (!modal?.classList.contains('hidden')) {
+        resultUpdateTimeout = setTimeout(() => renderJobMatchResults(jobTextarea.value), 180);
+      }
+      matchUpdateTimeout = setTimeout(saveState, 250);
+    });
+    const flushJobSave = () => {
+      if (matchUpdateTimeout) {
+        clearTimeout(matchUpdateTimeout);
+        matchUpdateTimeout = null;
+        saveState();
+      }
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushJobSave();
+    });
+    window.addEventListener('pagehide', flushJobSave);
+  }
+
+  if (modal) {
+    subscribe(() => {
+      if (!modal.classList.contains('hidden')) {
+        if (jobTextarea) jobTextarea.value = resumeData.meta?.jobDescription || '';
+        renderAtsAnalysis();
+        if (jobTextarea?.value.trim()) renderJobMatchResults(jobTextarea.value);
+      }
+    });
+  }
 
   if (openBtn && modal) {
     openBtn.addEventListener('click', () => {
+      if (jobTextarea) jobTextarea.value = resumeData.meta?.jobDescription || '';
       renderAtsAnalysis();
       modal.classList.remove('hidden');
+      if (jobTextarea?.value.trim()) renderJobMatchResults(jobTextarea.value);
     });
   }
 
@@ -322,10 +362,10 @@ export function renderAtsAnalysis() {
       <div class="p-3 rounded-lg border text-xs ${iss.type === 'error' ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-300' : 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-300'}">
         <div class="font-bold flex items-center gap-1.5 mb-0.5">
           <span>${iss.type === 'error' ? '🚫' : '⚠️'}</span>
-          <span>${iss.title}</span>
+          <span>${escapeHtml(iss.title)}</span>
         </div>
-        <p class="leading-relaxed opacity-90">${iss.desc}</p>
-        ${iss.recommendation ? `<p class="mt-1.5 pt-1.5 border-t border-current/10 font-semibold opacity-80">💡 Recommendation: ${iss.recommendation}</p>` : ''}
+        <p class="leading-relaxed opacity-90">${escapeHtml(iss.desc)}</p>
+        ${iss.recommendation ? `<p class="mt-1.5 pt-1.5 border-t border-current/10 font-semibold opacity-80">💡 Recommendation: ${escapeHtml(iss.recommendation)}</p>` : ''}
         ${typeof iss.scoreImpact === 'number' ? `<p class="mt-1 text-[11px] font-bold uppercase tracking-wide opacity-70">ATS Impact: -${iss.scoreImpact} points</p>` : ''}
       </div>
     `).join('');
@@ -337,8 +377,8 @@ export function renderAtsAnalysis() {
       <div class="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
         <span class="text-emerald-500 font-bold">✓</span>
         <div>
-          <span class="font-semibold text-slate-900 dark:text-white">${p.title}:</span>
-          <span class="text-slate-600 dark:text-slate-400"> ${p.desc}</span>
+          <span class="font-semibold text-slate-900 dark:text-white">${escapeHtml(p.title)}:</span>
+          <span class="text-slate-600 dark:text-slate-400"> ${escapeHtml(p.desc)}</span>
         </div>
       </div>
     `).join('');
@@ -358,7 +398,7 @@ function renderJobMatchResults(jobText) {
   if (matchedKeywords.length === 0 && missingKeywords.length === 0) {
     const message = trimmedLength < 15
       ? 'That looks too short to be a full job description. Paste the complete posting (responsibilities, requirements, skills) for an accurate match.'
-      : 'No recognized technical keywords detected. Try pasting a job description that lists specific skills or technologies.';
+      : 'No recognized job-related keywords detected. Try pasting a complete posting with role-specific skills and responsibilities.';
 
     resultsContainer.innerHTML = `
       <div class="p-3 text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 rounded-lg text-center border border-amber-200 dark:border-amber-800">
@@ -385,7 +425,7 @@ function renderJobMatchResults(jobText) {
         <div class="flex flex-wrap gap-1.5">
           ${matchedKeywords.map(kw => `
             <span class="px-2 py-0.5 text-xs rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium">
-              ${kw}
+              ${escapeHtml(KEYWORD_DISPLAY_LABELS.get(kw) || kw)}
             </span>
           `).join('')}
         </div>
@@ -399,8 +439,8 @@ function renderJobMatchResults(jobText) {
           </div>
           <div class="flex flex-wrap gap-1.5">
             ${missingKeywords.map(kw => `
-              <button type="button" class="add-missing-kw-btn px-2 py-0.5 text-xs rounded bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1" data-kw="${kw}">
-                <span>+</span> <span>${kw}</span>
+              <button type="button" class="add-missing-kw-btn px-2 py-0.5 text-xs rounded bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1" data-kw="${escapeHtml(kw)}">
+                <span>+</span> <span>${escapeHtml(KEYWORD_DISPLAY_LABELS.get(kw) || kw)}</span>
               </button>
             `).join('')}
           </div>
@@ -414,14 +454,14 @@ function renderJobMatchResults(jobText) {
   addButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const kw = btn.dataset.kw;
-      if (kw && !resumeData.skills.includes(kw)) {
+      if (kw && !resumeData.skills.some(skill => skill.toLowerCase() === kw.toLowerCase())) {
         // Capitalize nicely
-        const formattedKw = kw.charAt(0).toUpperCase() + kw.slice(1);
+        const formattedKw = KEYWORD_DISPLAY_LABELS.get(kw) || kw.charAt(0).toUpperCase() + kw.slice(1);
         resumeData.skills.push(formattedKw);
         saveState();
         btn.classList.replace('bg-amber-50', 'bg-emerald-50');
         btn.classList.replace('text-amber-800', 'text-emerald-700');
-        btn.innerHTML = `<span>✓</span> <span>${formattedKw}</span>`;
+        btn.textContent = `✓ ${formattedKw}`;
         btn.disabled = true;
       }
     });

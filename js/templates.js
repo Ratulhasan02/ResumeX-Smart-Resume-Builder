@@ -7,33 +7,33 @@
  * - Template 4: Classic Elegance (Serif headings, traditional executive/academic layout)
  */
 
-// Safe string escaping
-function esc(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+import { escapeHtml as esc, safeUrl } from './utils.js';
 
 // Convert multiline text or bullet points into formatted paragraphs/bullets
 function formatDescription(desc) {
   if (!desc) return '';
-  const lines = desc.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = String(desc).split('\n').map(line => line.trim()).filter(Boolean);
   if (lines.length === 0) return '';
 
-  const hasBullets = lines.some(l => l.startsWith('•') || l.startsWith('-') || l.startsWith('*'));
-  if (hasBullets) {
-    const listItems = lines.map(line => {
-      const cleaned = line.replace(/^[•\-\*]\s*/, '');
-      return `<li class="mb-1 text-slate-700 leading-relaxed text-xs">${esc(cleaned)}</li>`;
-    }).join('');
-    return `<ul class="list-disc list-inside space-y-0.5 mt-1">${listItems}</ul>`;
-  } else {
-    return lines.map(line => `<p class="mb-1 text-slate-700 leading-relaxed text-xs">${esc(line)}</p>`).join('');
-  }
+  const output = [];
+  let bullets = [];
+  const flushBullets = () => {
+    if (bullets.length) {
+      output.push(`<ul class="list-disc list-outside pl-4 space-y-0.5 mt-1">${bullets.join('')}</ul>`);
+      bullets = [];
+    }
+  };
+  lines.forEach(line => {
+    const bullet = line.match(/^[•*-]\s+(.+)$/);
+    if (bullet) {
+      bullets.push(`<li class="mb-1 text-slate-700 leading-relaxed text-xs">${esc(bullet[1])}</li>`);
+    } else {
+      flushBullets();
+      output.push(`<p class="mb-1 text-slate-700 leading-relaxed text-xs">${esc(line)}</p>`);
+    }
+  });
+  flushBullets();
+  return output.join('');
 }
 
 /**
@@ -82,7 +82,7 @@ function renderEmptyState() {
    ============================================================ */
 
 function renderExperienceSection(data, accentColor, headingStyle = 'default') {
-  const items = (data.experience || []).filter(e => e.company || e.role || e.description);
+  const items = (data.experience || []).filter(e => [e.company, e.role, e.description].some(value => String(value || '').trim()));
   if (items.length === 0) return '';
 
   return `
@@ -107,7 +107,7 @@ function renderExperienceSection(data, accentColor, headingStyle = 'default') {
 }
 
 function renderEducationSection(data, accentColor, headingStyle = 'default') {
-  const items = (data.education || []).filter(e => e.school || e.degree);
+  const items = (data.education || []).filter(e => [e.school, e.degree, e.year, e.grade].some(value => String(value || '').trim()));
   if (items.length === 0) return '';
 
   return `
@@ -132,20 +132,20 @@ function renderEducationSection(data, accentColor, headingStyle = 'default') {
 }
 
 function renderSkillsSection(data, accentColor, headingStyle = 'default', styleType = 'chips') {
-  const skills = (data.skills || []).filter(Boolean);
+  const skills = (data.skills || []).filter(skill => String(skill || '').trim());
   if (skills.length === 0) return '';
 
   return `
     <section class="resume-section mb-5" data-section="skills">
       ${renderSectionHeader("Skills & Competencies", accentColor, headingStyle)}
       <div class="flex flex-wrap gap-1.5 pt-0.5">
-        ${skills.map(s => {
+        ${skills.map((s, index) => {
           if (styleType === 'chips') {
             return `<span class="inline-block px-2.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200/80">${esc(s)}</span>`;
           } else if (styleType === 'pills') {
             return `<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium" style="background-color: ${accentColor}15; color: ${accentColor};">${esc(s)}</span>`;
           } else {
-            return `<span class="text-xs text-slate-800 font-medium">${esc(s)}<span class="text-slate-400 mx-1">•</span></span>`;
+            return `<span class="text-xs text-slate-800 font-medium">${index ? '<span class="text-slate-400 mx-1">•</span>' : ''}${esc(s)}</span>`;
           }
         }).join('')}
       </div>
@@ -154,7 +154,7 @@ function renderSkillsSection(data, accentColor, headingStyle = 'default', styleT
 }
 
 function renderProjectsSection(data, accentColor, headingStyle = 'default') {
-  const items = (data.projects || []).filter(p => p.title || p.description);
+  const items = (data.projects || []).filter(p => [p.title, p.description, p.link].some(value => String(value || '').trim()));
   if (items.length === 0) return '';
 
   return `
@@ -165,9 +165,9 @@ function renderProjectsSection(data, accentColor, headingStyle = 'default') {
           <div class="project-item">
             <div class="flex items-center justify-between flex-wrap gap-1">
               <span class="font-bold text-slate-900 text-xs">${esc(item.title)}</span>
-              ${item.link ? `
-                <a href="${esc(item.link)}" target="_blank" class="text-[11px] hover:underline flex items-center gap-1 font-medium min-w-0 break-all" style="color: ${accentColor};">
-                  ${esc(item.link.replace(/^https?:\/\//, ''))}
+              ${safeUrl(item.link) ? `
+                    <a href="${esc(safeUrl(item.link))}" target="_blank" rel="noopener noreferrer" class="text-[11px] hover:underline flex items-center gap-1 font-medium min-w-0 break-all" style="color: ${accentColor};">
+                      ${esc(item.link.replace(/^https?:\/\//, ''))}
                   <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
               ` : ''}
@@ -181,7 +181,7 @@ function renderProjectsSection(data, accentColor, headingStyle = 'default') {
 }
 
 function renderAchievementsSection(data, accentColor, headingStyle = 'default') {
-  const items = (data.achievements || []).filter(a => a.title || a.description);
+  const items = (data.achievements || []).filter(a => [a.title, a.description].some(value => String(value || '').trim()));
   if (items.length === 0) return '';
 
   return `
@@ -205,7 +205,7 @@ function renderLinksSection(data, accentColor, headingStyle = 'default') {
     { label: 'LinkedIn', url: links.linkedin },
     { label: 'GitHub', url: links.github },
     { label: 'Portfolio', url: links.portfolio }
-  ].filter(l => Boolean(l.url));
+  ].map(link => ({ ...link, safeUrl: safeUrl(link.url) })).filter(l => l.safeUrl);
 
   if (activeLinks.length === 0) return '';
 
@@ -214,7 +214,7 @@ function renderLinksSection(data, accentColor, headingStyle = 'default') {
       ${renderSectionHeader("Links & Profiles", accentColor, headingStyle)}
       <div class="flex flex-wrap gap-4 text-xs">
         ${activeLinks.map(l => `
-          <a href="${esc(l.url)}" target="_blank" class="hover:underline flex items-center gap-1 font-medium" style="color: ${accentColor};">
+          <a href="${esc(l.safeUrl)}" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-1 font-medium" style="color: ${accentColor};">
             <span class="font-semibold text-slate-800">${l.label}:</span>
             <span>${esc(l.url.replace(/^https?:\/\//, ''))}</span>
           </a>
@@ -262,9 +262,9 @@ export function template1(data) {
     personal.email ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>${esc(personal.email)}</span>` : '',
     personal.phone ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>${esc(personal.phone)}</span>` : '',
     personal.location ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>${esc(personal.location)}</span>` : '',
-    data.links?.linkedin ? `<a href="${esc(data.links.linkedin)}" target="_blank" class="hover:underline text-indigo-600">LinkedIn</a>` : '',
-    data.links?.github ? `<a href="${esc(data.links.github)}" target="_blank" class="hover:underline text-indigo-600">GitHub</a>` : '',
-    data.links?.portfolio ? `<a href="${esc(data.links.portfolio)}" target="_blank" class="hover:underline text-indigo-600">Portfolio</a>` : ''
+    safeUrl(data.links?.linkedin) ? `<a href="${esc(safeUrl(data.links.linkedin))}" target="_blank" rel="noopener noreferrer" class="hover:underline" style="color: ${accent};">LinkedIn</a>` : '',
+    safeUrl(data.links?.github) ? `<a href="${esc(safeUrl(data.links.github))}" target="_blank" rel="noopener noreferrer" class="hover:underline" style="color: ${accent};">GitHub</a>` : '',
+    safeUrl(data.links?.portfolio) ? `<a href="${esc(safeUrl(data.links.portfolio))}" target="_blank" rel="noopener noreferrer" class="hover:underline" style="color: ${accent};">Portfolio</a>` : ''
   ].filter(Boolean).join('<span class="text-slate-300">•</span>');
 
   const sectionMap = {
@@ -312,7 +312,19 @@ export function template2(data) {
   if (isResumeEmpty(data)) return renderEmptyState();
   const { personal = {}, meta = {} } = data;
   const accent = meta.accentColor || '#4f46e5';
-
+  const order = meta.sectionOrder || ['personal', 'experience', 'education', 'skills', 'projects', 'achievements', 'links'];
+  const sidebarSections = {
+    links: () => renderLinksSection(data, accent, 'boxed'),
+    skills: () => renderSkillsSection(data, accent, 'boxed', 'pills'),
+    education: () => renderEducationSection(data, accent, 'boxed')
+  };
+  const mainSections = {
+    experience: () => renderExperienceSection(data, accent, 'boxed'),
+    projects: () => renderProjectsSection(data, accent, 'boxed'),
+    achievements: () => renderAchievementsSection(data, accent, 'boxed')
+  };
+  const sidebarBody = order.filter(key => sidebarSections[key]).map(key => sidebarSections[key]()).join('');
+  const mainBody = order.filter(key => mainSections[key]).map(key => mainSections[key]()).join('');
   return `
     <div class="flex min-h-full font-sans">
       <!-- Left Sidebar Column -->
@@ -332,21 +344,7 @@ export function template2(data) {
           ${personal.location ? `<div class="text-slate-700">${esc(personal.location)}</div>` : ''}
         </div>
 
-        <!-- Social Profiles -->
-        ${(data.links?.linkedin || data.links?.github || data.links?.portfolio) ? `
-          <div class="space-y-2 text-xs">
-            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-200 pb-1">Profiles</div>
-            ${data.links.linkedin ? `<a href="${esc(data.links.linkedin)}" target="_blank" class="block font-medium hover:underline" style="color: ${accent};">LinkedIn</a>` : ''}
-            ${data.links.github ? `<a href="${esc(data.links.github)}" target="_blank" class="block font-medium hover:underline" style="color: ${accent};">GitHub</a>` : ''}
-            ${data.links.portfolio ? `<a href="${esc(data.links.portfolio)}" target="_blank" class="block font-medium hover:underline" style="color: ${accent};">Portfolio</a>` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Skills in sidebar -->
-        ${renderSkillsSection(data, accent, 'boxed', 'pills')}
-
-        <!-- Education in sidebar -->
-        ${renderEducationSection(data, accent, 'boxed')}
+        ${sidebarBody}
       </aside>
 
       <!-- Main Column -->
@@ -360,9 +358,7 @@ export function template2(data) {
           </section>
         ` : ''}
 
-        ${renderExperienceSection(data, accent, 'boxed')}
-        ${renderProjectsSection(data, accent, 'boxed')}
-        ${renderAchievementsSection(data, accent, 'boxed')}
+        ${mainBody}
       </main>
     </div>
   `;
@@ -454,7 +450,7 @@ export function template4(data) {
         </h1>
         ${personal.title ? `<div class="text-xs uppercase tracking-widest text-slate-600 font-sans mb-2 font-semibold">${esc(personal.title)}</div>` : ''}
         <div class="text-xs text-slate-600 font-sans flex items-center justify-center gap-2 flex-wrap">
-          ${[personal.location, personal.phone, personal.email, data.links?.linkedin, data.links?.portfolio]
+          ${[personal.location, personal.phone, personal.email]
             .filter(Boolean)
             .map(item => `<span>${esc(item)}</span>`)
             .join('<span class="text-slate-400">|</span>')}
@@ -477,8 +473,8 @@ export function template4(data) {
 
 // Template registry
 export const templates = {
-  template1,
-  template2,
-  template3,
-  template4
+  template1: Object.assign(template1, { layout: 'single' }),
+  template2: Object.assign(template2, { layout: 'two-column' }),
+  template3: Object.assign(template3, { layout: 'single' }),
+  template4: Object.assign(template4, { layout: 'single' })
 };

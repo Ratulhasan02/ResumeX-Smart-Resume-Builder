@@ -3,13 +3,11 @@
  * Manages Dark/Light mode toggle, persists preference, and syncs with state.
  */
 
-import { resumeData, saveState } from './state.js';
-
 const THEME_KEY = 'resume_builder_theme';
 
 export function initTheme() {
   const toggleBtn = document.getElementById('theme-toggle-btn');
-  const savedTheme = localStorage.getItem(THEME_KEY) || resumeData.meta?.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const savedTheme = localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
   applyTheme(savedTheme);
 
@@ -18,8 +16,6 @@ export function initTheme() {
       const isDark = document.documentElement.classList.contains('dark');
       const newTheme = isDark ? 'light' : 'dark';
       applyTheme(newTheme);
-      resumeData.meta.theme = newTheme;
-      saveState();
     });
   }
 }

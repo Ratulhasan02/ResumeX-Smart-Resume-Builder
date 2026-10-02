@@ -160,29 +160,67 @@ async function runTests() {
 
     // 9. Keyboard / Accessible Section Reordering (Up/Down Buttons)
     const orderBefore = await page.$$eval('#sections-accordion-container .section-card', cards => cards.map(c => c.dataset.section));
-    const downButtons = await page.$$('.move-section-down');
-    if (downButtons.length > 0) {
-      await downButtons[0].click();
+    const experienceIndex = orderBefore.indexOf('experience');
+    const experienceDownButton = await page.$('[data-section="experience"] .move-section-down');
+    if (experienceDownButton) {
+      await experienceDownButton.click();
       await new Promise(r => setTimeout(r, 300));
       const orderAfter = await page.$$eval('#sections-accordion-container .section-card', cards => cards.map(c => c.dataset.section));
-      record('Keyboard Move-Down Section Reorder', orderBefore[0] !== orderAfter[0], `1st section: ${orderBefore[0]} -> ${orderAfter[0]}`);
+      record('Keyboard Move-Down Section Reorder', orderAfter.indexOf('experience') === experienceIndex + 1, `experience index: ${experienceIndex} -> ${orderAfter.indexOf('experience')}`);
     }
 
-    // 10. Dark Mode Theme Toggle
+    // 10. Global Dark Mode Theme Toggle
+    const darkBeforeToggle = await page.$eval('html', el => el.classList.contains('dark'));
     await page.click('#theme-toggle-btn');
     await new Promise(r => setTimeout(r, 250));
     const isDark = await page.$eval('html', el => el.classList.contains('dark'));
-    record('Dark Mode Toggle', isDark, 'HTML element has .dark class');
+    record('Dark Mode Toggle', isDark !== darkBeforeToggle, `Theme changed to ${isDark ? 'dark' : 'light'}`);
+    if (!isDark) {
+      await page.click('#theme-toggle-btn');
+      await new Promise(r => setTimeout(r, 200));
+    }
+    const darkModeEnabled = await page.$eval('html', el => el.classList.contains('dark'));
+    record('Dark Mode Can Be Enabled', darkModeEnabled, 'HTML element has .dark class');
     await page.screenshot({ path: 'test_dark_mode.png' });
 
     // Toggle back to light
-    await page.click('#theme-toggle-btn');
-    await new Promise(r => setTimeout(r, 200));
-
-    // 11. Print / Save as PDF control
+    if (darkModeEnabled) {
+      await page.click('#theme-toggle-btn');
+      await new Promise(r => setTimeout(r, 200));
+    }
     const printButton = await page.$('#print-pdf-btn');
     const printButtonLabel = await page.$eval('#print-pdf-btn', el => el.textContent.trim());
     record('Print / Save as PDF Button', Boolean(printButton) && printButtonLabel.includes('Print / Save as PDF'), 'Native print dialog control is available');
+
+    await page.evaluate(async () => {
+      const stateModule = await import('/js/state.js');
+      const bullet = '• Delivered measurable outcomes by coordinating stakeholders, improving quality processes, and documenting reliable operating procedures across the organization.';
+      stateModule.resumeData.experience = Array.from({ length: 5 }, (_, index) => ({
+        company: `Organization ${index + 1}`,
+        role: `Program Lead ${index + 1}`,
+        duration: '2020 - 2025',
+        description: Array.from({ length: 4 }, () => bullet).join('\n')
+      }));
+      stateModule.saveState();
+    });
+    await new Promise(r => setTimeout(r, 300));
+    await page.emulateMediaType('print');
+    const resumePdf = await page.pdf({ format: 'A4', printBackground: true });
+    const pageCount = (Buffer.from(resumePdf).toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length;
+    record('Two-Page Resume Print Layout', pageCount === 2, `PDF pages: ${pageCount}`);
+    const printSpacing = await page.evaluate(() => {
+      const rules = Array.from(document.styleSheets).flatMap(sheet => {
+        try { return Array.from(sheet.cssRules); } catch { return []; }
+      });
+      const pageRule = rules.flatMap(rule => rule.cssRules ? Array.from(rule.cssRules) : [])
+        .find(rule => rule.constructor.name === 'CSSPageRule');
+      return {
+        pageMargin: pageRule?.style.margin,
+        previewPadding: getComputedStyle(document.querySelector('.resume-page-container')).padding
+      };
+    });
+    record('Print Page Margins', printSpacing.pageMargin === '12mm' && printSpacing.previewPadding === '0px', `@page margin: ${printSpacing.pageMargin}, preview padding: ${printSpacing.previewPadding}`);
+    await page.emulateMediaType('screen');
 
     // 12. Check for unexpected console errors
     const fatalErrors = pageErrors.concat(consoleLogs.filter(l => l.startsWith('[error]')));

@@ -17,6 +17,7 @@ import {
   switchProfile,
   renameProfile,
   deleteProfile,
+  parseStateFromJson,
   subscribe
 } from './state.js';
 
@@ -27,6 +28,7 @@ import { initPdfExport } from './pdfExport.js';
 import { updateCompletenessUI } from './completeness.js';
 import { initTheme } from './theme.js';
 import { initAtsChecker } from './atsChecker.js';
+import { escapeHtml } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Load state from localStorage
@@ -171,10 +173,6 @@ function initProfileSwitcher() {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  function escapeHtml(value) {
-    return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
-  }
-
   window.renderProfileMenu = renderProfileMenu;
 }
 
@@ -274,11 +272,23 @@ function initHeaderActions() {
     importJsonInput.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (file.size > 1024 * 1024) {
+        alert('Import files must be 1 MB or smaller.');
+        importJsonInput.value = '';
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result;
         if (typeof content === 'string') {
+          try {
+            parseStateFromJson(content);
+          } catch {
+            alert('Failed to import JSON file. Please ensure it is a valid ResumeBuilder profile.');
+            return;
+          }
+
           const importAsNewProfile = confirm('Import as a new profile? Choose Cancel to overwrite the current profile.');
           if (importAsNewProfile) {
             const profileName = prompt('Name the imported profile:', 'Imported Resume');
