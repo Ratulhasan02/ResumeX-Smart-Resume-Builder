@@ -124,18 +124,38 @@ async function runTests() {
 
     const atsScoreText = await page.$eval('#ats-modal-score', el => el.textContent.trim());
     record('ATS Score Evaluated', atsScoreText.includes('/100'), `ATS Score: ${atsScoreText}`);
+    const initialHistoryText = await page.$eval('#ats-score-history', el => el.textContent);
+    record('ATS Score History Visible', initialHistoryText.includes('ATS'), 'Recent profile scores are shown');
 
     // Paste Job Description
-    const sampleJob = "We are seeking a Senior Engineer with proficiency in React, TypeScript, GraphQL, Docker, Python, AWS, and Kubernetes to lead microservices development.";
+    const sampleJob = `Marketing and finance analyst role.
+Requirements:
+React, TypeScript, GraphQL, Docker, Python, AWS, Kubernetes, campaign management, and financial modeling.
+Preferred:
+Figma.`;
     await page.type('#job-description-input', sampleJob);
     await page.click('#match-job-btn');
     await new Promise(r => setTimeout(r, 400));
 
     const jobMatchBadge = await page.$eval('#job-match-results', el => el.textContent);
-    const hasJobMatch = jobMatchBadge.includes('% Match') && jobMatchBadge.includes('Found in Resume');
+    const hasJobMatch = jobMatchBadge.includes('% Match') && jobMatchBadge.includes('Found in Resume') && jobMatchBadge.includes('Score by category') && jobMatchBadge.toLowerCase().includes('finance');
     record('Job Description Keyword Matcher', hasJobMatch, 'Found matching keywords & calculated match score');
+    const updatedHistoryText = await page.$eval('#ats-score-history', el => el.textContent);
+    record('Job Match Added to History', updatedHistoryText.includes('Job'), 'Job match score is persisted');
 
     await page.screenshot({ path: 'test_ats_matcher.png' });
+
+    const howToFixLink = await page.$('#job-match-results [data-ats-fix="skill-input"]');
+    if (howToFixLink) {
+      await howToFixLink.click();
+      await new Promise(r => setTimeout(r, 250));
+      const fieldFocused = await page.$eval('#skill-input', el => document.activeElement === el);
+      record('How-to-Fix Field Jump', fieldFocused, 'Skills field receives focus');
+      await page.click('#ats-checker-btn');
+      await new Promise(r => setTimeout(r, 200));
+    } else {
+      record('How-to-Fix Field Jump', false, 'No category fix link rendered');
+    }
 
     // Close ATS Modal
     await page.click('#close-ats-modal-btn');

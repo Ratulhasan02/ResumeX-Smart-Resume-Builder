@@ -6,6 +6,7 @@ import { matchJobDescription } from '../js/atsChecker.js';
 import { parseStateFromJson, resumeData } from '../js/state.js';
 import { escapeHtml, safeUrl } from '../js/utils.js';
 import { template1 } from '../js/templates.js';
+import { analyzeBulletQuality, analyzeFormatQuality, extractJobKeywords, matchJobDescription as matchWeightedJobDescription } from '../js/atsEngine.js';
 
 test('validateEmail treats typo suggestions as soft warnings', () => {
   assert.deepEqual(validateEmail('user@gmail.co'), { valid: true, warning: 'Did you mean @gmail.com?' });
@@ -52,8 +53,8 @@ test('matchJobDescription uses job keywords and all resume sections', () => {
 
   try {
     const result = matchJobDescription('React, .NET, REST APIs, nursing, and patient care');
-    assert.deepEqual(result.matchedKeywords, ['react', '.net', 'rest api']);
-    assert.deepEqual(result.missingKeywords, ['patient care', 'nursing']);
+    assert.deepEqual(result.matchedKeywords.map(target => target.key).sort(), ['.net', 'react', 'rest api']);
+    assert.deepEqual(result.missingKeywords.map(target => target.key).sort(), ['nursing', 'patient care']);
     assert.equal(result.matchPercent, 60);
   } finally {
     Object.assign(resumeData, JSON.parse(previousState));
@@ -76,7 +77,11 @@ test('import normalization clamps content and repairs metadata', () => {
       template: 'unknown-template',
       accentColor: '#fff; background:url(javascript:alert(1))',
       theme: 'dark',
-      sectionOrder: ['skills', 'skills', 'unknown']
+      sectionOrder: ['skills', 'skills', 'unknown'],
+      atsScoreHistory: [
+        ...Array.from({ length: 6 }, (_, index) => ({ type: 'ats', score: index * 10, timestamp: `2026-09-${String(index + 1).padStart(2, '0')}T00:00:00.000Z` })),
+        { type: 'invalid', score: 100, timestamp: '2026-10-01T00:00:00.000Z' }
+      ]
     }
   }));
 
@@ -85,6 +90,7 @@ test('import normalization clamps content and repairs metadata', () => {
   assert.equal(normalized.meta.template, 'template1');
   assert.equal(normalized.meta.accentColor, '#4f46e5');
   assert.equal(normalized.meta.theme, undefined);
+  assert.deepEqual(normalized.meta.atsScoreHistory.map(entry => entry.score), [10, 20, 30, 40, 50]);
   assert.deepEqual(normalized.meta.sectionOrder, ['personal', 'skills', 'experience', 'education', 'projects', 'achievements', 'links']);
 });
 
@@ -103,4 +109,75 @@ test('template output escapes imported text and omits unsafe links', () => {
   assert.equal(output.includes('<img src=x onerror=alert(1)>'), false);
   assert.equal(output.includes('href="javascript:'), false);
   assert.equal(escapeHtml('<script>'), '&lt;script&gt;');
+});
+
+test('generic extraction ranks phrases, applies required weights, and resolves aliases', () => {
+  const targets = extractJobKeywords(`Responsibilities:
+Lead stakeholder engagement and support campaign planning.
+Requirements:
+Use JS, k8s, and stakeholder engagement for market research.
+Qualifications:
+Financial modeling experience.
+Preferred:
+Figma experience.`, 80);
+  const byKey = new Map(targets.map(target => [target.key, target]));
+
+  assert.equal(byKey.get('javascript').label, 'JavaScript');
+  assert.equal(byKey.get('kubernetes').label, 'Kubernetes');
+  assert.equal(byKey.get('market research').category, 'marketing');
+  assert.equal(byKey.get('financial modeling').category, 'finance');
+  assert.equal(byKey.get('figma').required, false);
+  assert.equal(byKey.get('javascript').weight, 2);
+  assert.ok(byKey.get('stakeholder engagement').frequency >= 2);
+  assert.ok(targets.every(target => target.key.split(' ').length <= 3));
+});
+
+test('weighted matching recognizes plural and inflected forms', () => {
+  const result = matchWeightedJobDescription('Requirements:\nREST APIs, managed campaigns, studied workflows, and coordinating departments', {
+    personal: { title: '' },
+    skills: ['REST API', 'manage campaign', 'study workflow', 'coordinate department'],
+    experience: [],
+    education: [],
+    projects: [],
+    achievements: [],
+    links: {}
+  });
+
+  assert.ok(result.matchPercent > 0);
+  assert.ok(result.matchedKeywords.some(target => target.key === 'rest api'));
+  assert.ok(result.matchedKeywords.some(target => target.key === 'campaign management'));
+  assert.ok(result.matchedKeywords.some(target => target.key === 'studied workflows'));
+  assert.ok(result.matchedKeywords.some(target => target.key === 'coordinating departments'));
+  assert.ok(result.categoryBreakdown.some(category => category.category === 'marketing'));
+});
+
+test('bullet diagnostics flag weak, unmeasured, long, and repeated bullets', () => {
+  const findings = analyzeBulletQuality({
+    experience: [{
+      role: 'Coordinator',
+      company: 'Example',
+      description: '• Responsible for coordinating a broad range of complex activities across several departments and supporting operational delivery in multiple locations throughout the entire organization and across every regional office.\n• Responsible for preparing weekly status updates and coordinating project work.'
+    }]
+  });
+  const titles = findings.map(finding => finding.title);
+
+  assert.ok(titles.includes('Strengthen a weak bullet opening'));
+  assert.ok(titles.includes('Add a measurable result'));
+  assert.ok(titles.includes('Shorten a long bullet'));
+  assert.ok(titles.includes('Vary repeated opening verbs'));
+});
+
+test('format diagnostics flag emojis, date inconsistency, long summaries, and missing links', () => {
+  const findings = analyzeFormatQuality({
+    personal: { summary: `📊 ${'A'.repeat(460)}` },
+    experience: [{ duration: '2020-2022' }],
+    education: [{ year: 'Jan 2021' }],
+    links: { linkedin: '', github: '', portfolio: '' }
+  });
+  const titles = findings.map(finding => finding.title);
+
+  assert.ok(titles.includes('Remove emoji characters'));
+  assert.ok(titles.includes('Shorten the professional summary'));
+  assert.ok(titles.includes('Use a consistent date format'));
+  assert.ok(titles.includes('Add a professional link'));
 });

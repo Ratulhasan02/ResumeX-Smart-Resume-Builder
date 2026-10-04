@@ -49,6 +49,9 @@ The application is completely client-side and does not require a backend or data
 - **Keyword Match Percentage** showing how closely the resume matches the provided job description.
 - **Matched vs Missing Keywords** to help identify important missing skills.
 - **Dynamic ATS Results** that update while the checker is open as resume content, template, or job description changes.
+- **Weighted keyword scoring** extracts ranked one- to three-word phrases, resolves aliases across technology, marketing, finance, healthcare, and design, and gives required terms extra weight.
+- **Bullet and format diagnostics** flag weak openings, missing metrics, long or repetitive bullets, emojis, inconsistent dates, long summaries, and missing profile links with shortcuts to relevant fields.
+- **Per-profile score history** retains the last five ATS and job-match scores.
 
 ---
 
@@ -202,8 +205,12 @@ ResumeX-Smart-Resume-Builder/
 │   ├── tailwind.input.css
 │   └── tailwind.css
 │
+├── data/
+│   └── skills.json
+│
 ├── js/
 │   ├── atsChecker.js
+│   ├── atsEngine.js
 │   ├── completeness.js
 │   ├── dragDrop.js
 │   ├── formHandlers.js

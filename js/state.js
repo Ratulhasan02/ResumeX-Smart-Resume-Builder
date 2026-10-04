@@ -44,7 +44,8 @@ const defaultState = {
     template: "template1",
     accentColor: "#4f46e5",
     sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"],
-    jobDescription: ""
+    jobDescription: "",
+    atsScoreHistory: []
   }
 };
 
@@ -83,7 +84,6 @@ const sampleData = {
   skills: [
     "JavaScript",
     "TypeScript",
-    "React",
     "Next.js",
     "Node.js",
     "PostgreSQL",
@@ -125,7 +125,8 @@ const sampleData = {
     template: "template1",
     accentColor: "#4f46e5",
     sectionOrder: ["personal", "experience", "education", "skills", "projects", "achievements", "links"],
-    jobDescription: ""
+    jobDescription: "",
+    atsScoreHistory: []
   }
 };
 
@@ -187,7 +188,15 @@ function normalizeState(parsed) {
         ? meta.accentColor
         : defaultState.meta.accentColor,
       sectionOrder,
-      jobDescription: boundedString(meta.jobDescription)
+      jobDescription: boundedString(meta.jobDescription),
+      atsScoreHistory: Array.isArray(meta.atsScoreHistory)
+        ? meta.atsScoreHistory.filter(entry => entry && (entry.type === 'ats' || entry.type === 'job') && Number.isFinite(entry.score) && typeof entry.timestamp === 'string' && Number.isFinite(Date.parse(entry.timestamp))).slice(-5)
+          .map(entry => ({
+            type: entry.type,
+            score: Math.max(0, Math.min(100, Math.round(entry.score))),
+            timestamp: boundedString(entry.timestamp).slice(0, 40)
+          }))
+        : []
     },
     education: normalizeItems(source.education, ['school', 'degree', 'year', 'grade'], defaultState.education),
     experience: normalizeItems(source.experience, ['company', 'role', 'duration', 'description'], defaultState.experience),
